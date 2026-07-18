@@ -142,6 +142,11 @@ body {
   50%      { opacity: 1; }
 }
 
+.bar__right {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.1rem;
+}
 .bar__tag {
   margin: 0;
   font-family: var(--mono);
@@ -150,6 +155,163 @@ body {
   text-transform: lowercase;
   color: var(--ink-faint);
 }
+
+.gear {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  padding: 0.3rem;
+  line-height: 0;
+  border-radius: 50%;
+  transition: color 300ms var(--ease), transform 600ms var(--ease);
+}
+.gear:hover, .gear:focus-visible { color: var(--ink); transform: rotate(35deg); outline: none; }
+.gear svg { width: 20px; height: 20px; display: block; }
+
+/* --- Painel de configurações --------------------------------------------- */
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+}
+.sheet[hidden] { display: none; }
+
+.sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 5, 8, 0.72);
+  -webkit-backdrop-filter: blur(7px);
+          backdrop-filter: blur(7px);
+  animation: fade 300ms ease both;
+}
+
+.sheet__panel {
+  position: relative;
+  width: min(440px, 100%);
+  max-height: 88vh;
+  overflow: auto;
+  background: linear-gradient(160deg, #15131a, #100e13);
+  border: 1px solid var(--ink-ghost);
+  border-radius: 16px;
+  padding: clamp(1.1rem, 3.4vw, 1.7rem);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.62);
+  animation: rise 420ms var(--ease) both;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.sheet__title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: lowercase;
+  color: var(--ink-soft);
+}
+.sheet__close {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  transition: color 260ms var(--ease);
+}
+.sheet__close:hover { color: var(--ink); }
+
+.sheet__hint {
+  margin: 0.5rem 0 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  color: var(--ink-faint);
+}
+
+.preview {
+  position: relative;
+  height: 136px;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid var(--ink-ghost);
+  background: radial-gradient(120% 130% at 50% 26%, #17151c, #0b0a0e);
+  margin-bottom: 1rem;
+}
+.preview canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.opts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.opt {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  padding: 0.7rem 0.7rem 0.7rem 1.1rem;
+  border-radius: 9px;
+  transition: background 240ms var(--ease), color 240ms var(--ease);
+}
+.opt:hover, .opt:focus-visible {
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink);
+  outline: none;
+}
+.opt::before {
+  content: "";
+  position: absolute;
+  left: 0.2rem;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 9px var(--ember);
+  transform: translateY(-50%) scale(0);
+  transition: transform 300ms var(--ease);
+}
+.opt.is-sel::before { transform: translateY(-50%) scale(1); }
+.opt.is-sel { color: var(--ink); }
+.opt__name {
+  font-family: var(--mono);
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  min-width: 4.4em;
+}
+.opt__desc {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.94rem;
+  color: var(--ink-faint);
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
 /* --- Palco / editor ------------------------------------------------------- */
 

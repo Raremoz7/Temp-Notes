@@ -4,7 +4,7 @@
 <meta name="description" content="lapso — um bloco de notas onde as palavras têm prazo de validade. Escreva o que precisa sair e deixe ir." />
 <title>lapso — palavras com prazo</title>
 
-<link rel="stylesheet" href="assets/css/style.css?v=2" />
+<link rel="stylesheet" href="assets/css/style.css?v=3" />
 
 <!-- Grão de filme + vinheta quente: matam o aspecto "chapado digital" -->
 <div class="grain" aria-hidden="true"></div>
@@ -16,7 +16,15 @@
     <span class="mark__word">lapso</span>
     <span class="mark__coal" aria-hidden="true"></span>
   </a>
-  <p class="bar__tag">palavras com prazo de validade</p>
+  <div class="bar__right">
+    <p class="bar__tag">palavras com prazo de validade</p>
+    <button class="gear" id="gear" type="button" aria-label="Configurações" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+        <circle cx="12" cy="12" r="3.2"></circle>
+        <path d="M12 2.6v2.6M12 18.8v2.6M4.2 12H1.6M22.4 12h-2.6M5.6 5.6 7.4 7.4M16.6 16.6l1.8 1.8M18.4 5.6 16.6 7.4M7.4 16.6l-1.8 1.8"></path>
+      </svg>
+    </button>
+  </div>
 </header>
 
 <main class="stage">
@@ -66,5 +74,20 @@
   </div>
 </footer>
 
-<script src="assets/js/dissolve.js?v=2"></script>
-<script src="assets/js/app.js?v=2"></script>
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__scrim" id="scrim"></div>
+  <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet__head">
+      <h2 class="sheet__title" id="sheetTitle">quando o tempo acaba</h2>
+      <button class="sheet__close" id="sheetClose" type="button" aria-label="Fechar">×</button>
+    </div>
+    <p class="sheet__hint">passe o cursor ou toque para ver cada uma</p>
+    <div class="preview">
+      <canvas id="previewCanvas" aria-hidden="true"></canvas>
+    </div>
+    <div class="opts" id="opts" role="radiogroup" aria-label="animação do fim"></div>
+  </div>
+</div>
+
+<script src="assets/js/dissolve.js?v=3"></script>
+<script src="assets/js/app.js?v=3"></script>

@@ -41,9 +41,11 @@ O objetivo era um objeto com autoria — nada com "cara de template de IA".
   para baixo, com uma brasa que brilha no ponto de queima. Substitui a barra de
   progresso genérica por algo que pertence ao tema.
 - **A morte** — motor de partículas próprio (canvas, sem bibliotecas): o texto
-  renderizado é amostrado pixel a pixel, cada ponto vira uma partícula, uma parte
-  pega fogo (brasa) e o resto vira cinza levada pelo vento, da esquerda para a
-  direita.
+  renderizado é amostrado pixel a pixel, cada ponto vira uma partícula. São
+  **quatro animações à escolha** (no botão de configurações, com preview ao vivo
+  de cada uma): `brasa` (fagulha e cinza ao vento), `vapor` (desfoca e evapora),
+  `poeira` (as letras se esfarelam) e `glitch` (corrompe com aberração cromática
+  e colapsa).
 - **Grão de filme e vinheta** — uma camada de ruído e uma vinheta que esquenta
   perto do fim matam o aspecto "chapado digital".
 - **Respeito ao usuário** — `prefers-reduced-motion` desliga tremores e a
@@ -80,5 +82,7 @@ assets/js/app.js      # orquestração: modos, contagem, calor, morte
 
 ## Privacidade
 
-Nada sai do seu dispositivo. Não há armazenamento, telemetria ou rede — quando a
-nota some, ela some. É esse o ponto.
+Nada sai do seu dispositivo. Não há servidor, telemetria ou rede — quando a nota
+some, ela some. A única coisa guardada no navegador é a sua preferência de
+animação do fim (em `localStorage`); **o conteúdo das notas nunca é salvo**. É
+esse o ponto.

@@ -20,9 +20,22 @@
   var goneEl = document.getElementById("gone");
   var againEl = document.getElementById("again");
   var canvas = document.querySelector(".ash");
+  var gear = document.getElementById("gear");
+  var sheet = document.getElementById("sheet");
+  var scrim = document.getElementById("scrim");
+  var sheetClose = document.getElementById("sheetClose");
+  var previewCanvas = document.getElementById("previewCanvas");
+  var optsEl = document.getElementById("opts");
 
   var items = Array.prototype.slice.call(track.querySelectorAll(".wheel__item"));
   var dissolve = window.createDissolve(canvas);
+  var previewer = window.createPreviewer(previewCanvas, text);
+
+  // Preferência de animação do fim (única coisa que persiste; notas nunca)
+  var STORE_KEY = "lapso:endStyle";
+  function loadStyle() { try { return localStorage.getItem(STORE_KEY) || "brasa"; } catch (_) { return "brasa"; } }
+  function saveStyle(v) { try { localStorage.setItem(STORE_KEY, v); } catch (_) {} }
+  var endStyle = loadStyle();
 
   function prefersReduce() {
     return window.matchMedia &&
@@ -44,6 +57,7 @@
   };
 
   var selected = null;
+  var paused = false;   // congela a contagem enquanto as configurações estão abertas
 
   /* ---- utilidades ---- */
 
@@ -215,7 +229,9 @@
   /* ---- o loop ---- */
 
   function loop(now) {
+    var dt = now - (loop._last || now);
     if (state.running && !state.dead) {
+      if (paused) { state.startAt += dt; state.lastInput += dt; }
       if (state.mode === "timed") {
         var elapsed = now - state.startAt;
         var remaining = state.durationMs - elapsed;
@@ -265,7 +281,7 @@
     timeEl.textContent = state.mode === "timed" ? "0:00" : "—";
     text.setAttribute("readonly", "readonly");
     text.blur();
-    dissolve.run(text, afterDeath);
+    dissolve.run(text, endStyle, afterDeath);
   }
 
   function afterDeath() {
@@ -293,6 +309,72 @@
     hintEl.textContent = state.mode === "desabafo"
       ? "não pare de escrever" : "começa quando você escrever";
     text.focus();
+  });
+
+  /* ---- configurações: animação do fim ---- */
+
+  var sheetOpen = false;
+
+  (function buildOpts() {
+    var styles = window.LAPSO_STYLES || [];
+    styles.forEach(function (s) {
+      var b = document.createElement("button");
+      b.className = "opt";
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.dataset.style = s.id;
+      b.innerHTML =
+        '<span class="opt__name">' + s.name + '</span>' +
+        '<span class="opt__desc">' + s.desc + '</span>';
+      b.addEventListener("mouseenter", function () { if (sheetOpen) previewer.play(s.id); });
+      b.addEventListener("focus", function () { if (sheetOpen) previewer.play(s.id); });
+      b.addEventListener("mouseleave", function () { if (sheetOpen) previewer.play(endStyle); });
+      b.addEventListener("click", function () { chooseStyle(s.id); });
+      optsEl.appendChild(b);
+    });
+  })();
+
+  function markStyle() {
+    var opts = optsEl.querySelectorAll(".opt");
+    for (var i = 0; i < opts.length; i++) {
+      var on = opts[i].dataset.style === endStyle;
+      opts[i].classList.toggle("is-sel", on);
+      opts[i].setAttribute("aria-checked", on ? "true" : "false");
+    }
+  }
+  markStyle();
+
+  function chooseStyle(id) {
+    endStyle = id;
+    saveStyle(id);
+    markStyle();
+    previewer.play(id);
+  }
+
+  function openSheet() {
+    if (sheetOpen) return;
+    sheetOpen = true;
+    paused = true;
+    sheet.hidden = false;
+    markStyle();
+    requestAnimationFrame(function () { previewer.play(endStyle); });
+    sheetClose.focus();
+  }
+
+  function closeSheet() {
+    if (!sheetOpen) return;
+    sheetOpen = false;
+    paused = false;
+    previewer.stop();
+    sheet.hidden = true;
+    gear.focus();
+  }
+
+  gear.addEventListener("click", openSheet);
+  scrim.addEventListener("click", closeSheet);
+  sheetClose.addEventListener("click", closeSheet);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && sheetOpen) closeSheet();
   });
 
   /* ---- início ---- */
