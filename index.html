@@ -4,7 +4,7 @@
 <meta name="description" content="lapso — um bloco de notas onde as palavras têm prazo de validade. Escreva o que precisa sair e deixe ir." />
 <title>lapso — palavras com prazo</title>
 
-<link rel="stylesheet" href="assets/css/style.css?v=3" />
+<link rel="stylesheet" href="assets/css/style.css?v=4" />
 
 <!-- Grão de filme + vinheta quente: matam o aspecto "chapado digital" -->
 <div class="grain" aria-hidden="true"></div>
@@ -18,6 +18,8 @@
   </a>
   <div class="bar__right">
     <p class="bar__tag">palavras com prazo de validade</p>
+    <button class="hbtn" id="muralBtn" type="button" hidden>mural</button>
+    <button class="hbtn hbtn--accent" id="newBtn" type="button" hidden>escrever</button>
     <button class="gear" id="gear" type="button" aria-label="Configurações" aria-haspopup="dialog">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
         <circle cx="12" cy="12" r="3.2"></circle>
@@ -27,29 +29,39 @@
   </div>
 </header>
 
-<main class="stage">
-  <section class="note" id="note" aria-label="sua nota">
-    <div class="fuse" aria-hidden="true">
-      <span class="fuse__track"></span>
-      <span class="fuse__burn"></span>
-      <span class="fuse__spark"></span>
-    </div>
+<main class="views">
+  <section class="stage" id="stage" hidden>
+    <section class="note" id="note" aria-label="sua nota">
+      <div class="fuse" aria-hidden="true">
+        <span class="fuse__track"></span>
+        <span class="fuse__burn"></span>
+        <span class="fuse__spark"></span>
+      </div>
 
-    <textarea
-      class="note__text"
-      id="text"
-      spellcheck="false"
-      autocomplete="off"
-      autocapitalize="sentences"
-      placeholder="escreva. isto vai desaparecer."
-      aria-label="texto da nota"
-    ></textarea>
+      <textarea
+        class="note__text"
+        id="text"
+        spellcheck="false"
+        autocomplete="off"
+        autocapitalize="sentences"
+        placeholder="escreva. isto vai desaparecer."
+        aria-label="texto da nota"
+      ></textarea>
+    </section>
+
+    <div class="gone" id="gone" hidden>
+      <p class="gone__line">não resta nada.</p>
+      <button class="gone__again" id="again" type="button">escrever outra</button>
+    </div>
   </section>
 
-  <div class="gone" id="gone" hidden>
-    <p class="gone__line">não resta nada.</p>
-    <button class="gone__again" id="again" type="button">escrever outra</button>
-  </div>
+  <section class="mural" id="mural" hidden aria-label="mural de notas">
+    <div class="mural__grid" id="grid"></div>
+    <div class="mural__empty" id="muralEmpty" hidden>
+      <p class="mural__emptyLine">nada por aqui — ainda.</p>
+      <button class="mural__emptyBtn" id="emptyNew" type="button">escrever algo que não deve durar</button>
+    </div>
+  </section>
 </main>
 
 <footer class="dock" id="dock">
@@ -89,5 +101,5 @@
   </div>
 </div>
 
-<script src="assets/js/dissolve.js?v=3"></script>
-<script src="assets/js/app.js?v=3"></script>
+<script src="assets/js/dissolve.js?v=4"></script>
+<script src="assets/js/app.js?v=4"></script>

@@ -557,6 +557,170 @@ body {
   50%      { opacity: 0.45; }
 }
 
+/* --- Botões do cabeçalho -------------------------------------------------- */
+
+.hbtn {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  padding: 0.45em 0.3em;
+  transition: color 300ms var(--ease);
+}
+.hbtn[hidden] { display: none; }
+.hbtn:hover, .hbtn:focus-visible { color: var(--ink); outline: none; }
+.hbtn--accent { color: var(--ink-soft); }
+.hbtn--accent::before {
+  content: "";
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 8px var(--ember);
+  margin-right: 0.5em;
+  vertical-align: 0.1em;
+}
+
+/* --- Views: editor <-> mural ---------------------------------------------- */
+
+.views { position: relative; display: grid; min-width: 0; }
+.stage, .mural { grid-area: 1 / 1; min-width: 0; }
+.stage[hidden], .mural[hidden] { display: none; }
+.dock[hidden] { display: none; }
+
+/* --- Mural de notas vivas ------------------------------------------------- */
+
+.mural {
+  align-content: start;
+  padding: clamp(1.3rem, 4vh, 2.6rem) var(--edge) clamp(2rem, 5vh, 3.2rem);
+  overflow-y: auto;
+}
+.mural__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.mural__grid[hidden] { display: none; }
+
+.card {
+  --heat: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 152px;
+  text-align: left;
+  appearance: none;
+  cursor: pointer;
+  padding: 1rem 1rem 0.85rem;
+  border-radius: 13px;
+  color: var(--ink);
+  background: linear-gradient(158deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012));
+  border: 1px solid color-mix(in oklab, var(--ink-ghost), var(--ember) calc(var(--heat) * 65%));
+  box-shadow: 0 10px 34px -16px color-mix(in oklab, transparent, var(--ember) calc(var(--heat) * 60%));
+  transition: transform 400ms var(--ease), border-color 600ms linear, box-shadow 600ms linear;
+}
+.card:hover, .card:focus-visible {
+  transform: translateY(-2px);
+  outline: none;
+}
+.card__text {
+  flex: 1;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+}
+.card__text--empty { font-style: italic; color: var(--ink-faint); }
+.card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card__time {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  color: color-mix(in oklab, var(--ash), var(--ember) calc(var(--heat) * 100%));
+}
+.card__spark {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ash), var(--ember) calc(var(--heat) * 100%));
+  box-shadow: 0 0 calc(3px + var(--heat) * 13px) var(--ember);
+  opacity: calc(0.4 + var(--heat) * 0.6);
+}
+
+.card--dying {
+  pointer-events: none;
+  animation: cardDie 900ms var(--ease) forwards;
+}
+@keyframes cardDie {
+  0%   { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+  45%  { opacity: 0.5; filter: blur(3px); transform: translateY(-6px) scale(0.99); }
+  100% { opacity: 0; filter: blur(11px); transform: translateY(-18px) scale(0.95); }
+}
+
+.mural__empty {
+  grid-area: 1 / 1;
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 1.4rem;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+.mural__empty[hidden] { display: none; }
+.mural__emptyLine {
+  margin: 0;
+  font-size: clamp(1.3rem, 1rem + 1.6vw, 1.8rem);
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.mural__emptyBtn {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  color: var(--ink-faint);
+  padding: 0.6em 0;
+  position: relative;
+  transition: color 400ms var(--ease);
+}
+.mural__emptyBtn::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0.15em;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0.3);
+  transform-origin: left;
+  transition: transform 500ms var(--ease);
+}
+.mural__emptyBtn:hover { color: var(--ink); }
+.mural__emptyBtn:hover::after { transform: scaleX(1); }
+
 /* --- Responsivo ----------------------------------------------------------- */
 
 @media (max-width: 620px) {
@@ -565,6 +729,8 @@ body {
   .fuse { left: -1.1rem; }
   .note__text { min-height: 38vh; }
   .wheel__item { font-size: 1.08rem; padding: 0.55em 1em; }
+  .mural__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+  .card { min-height: 130px; }
 }
 
 /* --- Acessibilidade: movimento reduzido ----------------------------------- */

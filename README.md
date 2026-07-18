@@ -17,13 +17,22 @@ tempo no material da interface — ele não é um detalhe no canto, é o protago
 
 Dois jeitos de usar:
 
-- **Prazo** — você escolhe quanto tempo a nota vive (`15s`, `1min`, `10min`,
-  `1h`). A contagem começa na primeira tecla. Um *pavio* queima na lateral e a
-  brasa esquenta de cinza a vermelho conforme o fim se aproxima. No zero, as
-  palavras viram fagulha e se desfazem.
+- **Prazo** — você escolhe quanto tempo a nota vive (de `15s` a `1h`). A contagem
+  começa na primeira tecla. Um *pavio* queima na lateral e a brasa esquenta de
+  cinza a vermelho conforme o fim se aproxima. No zero, as palavras se desfazem.
 - **Desabafo** — não tem relógio. Enquanto você escreve, a nota vive. Se você
   parar, ela começa a se esvair e, se você não voltar, some. Escrever de novo
   devolve fôlego. É pra quando o importante é só deixar sair.
+
+## O mural de notas vivas
+
+Você pode ter **várias notas com prazo ao mesmo tempo**, cada uma contando o
+próprio tempo. O **mural** é a tela central que reúne todas as que ainda vivem —
+cada card mostra um trecho, o tempo restante e a brasa esquentando conforme o
+prazo se esgota. Toque para abrir e continuar; quando o prazo de uma acaba, ela
+se desfaz e **some do mural para sempre**. É "várias notas, abra depois" — mas o
+depois tem prazo: elas continuam mortais. (Notas em modo *desabafo* são
+transientes e não entram no mural.)
 
 ## Decisões de design
 
@@ -82,7 +91,8 @@ assets/js/app.js      # orquestração: modos, contagem, calor, morte
 
 ## Privacidade
 
-Nada sai do seu dispositivo. Não há servidor, telemetria ou rede — quando a nota
-some, ela some. A única coisa guardada no navegador é a sua preferência de
-animação do fim (em `localStorage`); **o conteúdo das notas nunca é salvo**. É
-esse o ponto.
+Nada sai do seu dispositivo — não há servidor, telemetria ou rede. As notas com
+prazo ficam guardadas **só no seu navegador** (`localStorage`) e **só enquanto
+estão vivas**: quando o prazo acaba — mesmo com o app fechado — a nota é apagada
+de vez. Notas em modo *desabafo* nunca são salvas. Também fica guardada a sua
+preferência de animação do fim. Quando some, some. É esse o ponto.
