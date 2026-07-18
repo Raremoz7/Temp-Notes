@@ -1,0 +1,64 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0a0c" />
+<meta name="description" content="lapso — um bloco de notas onde as palavras têm prazo de validade. Escreva o que precisa sair e deixe ir." />
+<title>lapso — palavras com prazo</title>
+
+<link rel="stylesheet" href="assets/css/style.css" />
+
+<!-- Grão de filme + vinheta quente: matam o aspecto "chapado digital" -->
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<canvas class="ash" aria-hidden="true"></canvas>
+
+<header class="bar">
+  <a class="mark" href="./" aria-label="lapso — recomeçar">
+    <span class="mark__word">lapso</span>
+    <span class="mark__coal" aria-hidden="true"></span>
+  </a>
+  <p class="bar__tag">palavras com prazo de validade</p>
+</header>
+
+<main class="stage">
+  <section class="note" id="note" aria-label="sua nota">
+    <div class="fuse" aria-hidden="true">
+      <span class="fuse__track"></span>
+      <span class="fuse__burn"></span>
+      <span class="fuse__spark"></span>
+    </div>
+
+    <textarea
+      class="note__text"
+      id="text"
+      spellcheck="false"
+      autocomplete="off"
+      autocapitalize="sentences"
+      placeholder="escreva. isto vai desaparecer."
+      aria-label="texto da nota"
+    ></textarea>
+  </section>
+
+  <div class="gone" id="gone" hidden>
+    <p class="gone__line">não resta nada.</p>
+    <button class="gone__again" id="again" type="button">escrever outra</button>
+  </div>
+</main>
+
+<footer class="dock" id="dock">
+  <div class="span" id="span" role="radiogroup" aria-label="tempo de vida da nota">
+    <button class="span__opt" type="button" data-secs="15" role="radio" aria-checked="false">15<span class="span__u">s</span></button>
+    <button class="span__opt is-on" type="button" data-secs="60" role="radio" aria-checked="true">1<span class="span__u">min</span></button>
+    <button class="span__opt" type="button" data-secs="600" role="radio" aria-checked="false">10<span class="span__u">min</span></button>
+    <button class="span__opt" type="button" data-secs="3600" role="radio" aria-checked="false">1<span class="span__u">h</span></button>
+    <span class="span__sep" aria-hidden="true"></span>
+    <button class="span__opt span__opt--mode" type="button" data-mode="desabafo" role="radio" aria-checked="false">desabafo</button>
+  </div>
+
+  <div class="read" id="read" aria-live="off">
+    <span class="read__time" id="time">1:00</span>
+    <span class="read__hint" id="hint">começa quando você escrever</span>
+  </div>
+</footer>
+
+<script src="assets/js/dissolve.js"></script>
+<script src="assets/js/app.js"></script>
