@@ -31,6 +31,7 @@
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
+html { overflow-x: clip; }
 
 body {
   margin: 0;
@@ -43,7 +44,7 @@ body {
   font-family: var(--serif);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* --- Atmosfera: grão de filme + vinheta que esquenta perto do fim --------- */
@@ -288,63 +289,88 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Doca inferior: seletor de tempo + leitura ---------------------------- */
+/* --- Doca inferior: roda de tempo + leitura ------------------------------- */
 
 .dock {
   position: relative;
   z-index: 5;
+  min-width: 0;                      /* deixa a coluna do grid encolher no mobile */
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  padding: 0 var(--edge) clamp(1.2rem, 3.5vh, 2.4rem);
+  gap: 0.55rem;
+  padding: 0 var(--edge) clamp(1.1rem, 3.2vh, 2.2rem);
 }
 
-.span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
+/* Roda horizontal de tempo — inspirada no seletor do timer do celular, mas
+   deitada: você arrasta e o valor que fica no centro é o escolhido. */
+.wheel {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  min-width: 0;                      /* impede o conteúdo largo de inflar o layout */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+  outline: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 74%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 74%, transparent 100%);
 }
-.span__opt {
+.wheel::-webkit-scrollbar { display: none; }
+.wheel:active { cursor: grabbing; }
+.wheel.is-locked { pointer-events: none; opacity: 0.5; }
+.wheel:focus-visible .wheel__marker {
+  box-shadow: 0 0 0 3px color-mix(in oklab, transparent, var(--ink) 30%), 0 0 8px var(--accent);
+}
+
+.wheel__track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  padding-inline: 50%;               /* deixa o primeiro e o último centralizarem */
+}
+
+.wheel__item {
+  scroll-snap-align: center;
+  flex: 0 0 auto;
   appearance: none;
   border: 0;
   background: none;
   cursor: pointer;
-  color: var(--ink-faint);
+  color: var(--ink);
   font-family: var(--mono);
-  font-size: 0.82rem;
-  letter-spacing: 0.04em;
-  padding: 0.5em 0.7em;
-  border-radius: 2px;
-  position: relative;
-  transition: color 320ms var(--ease);
+  font-size: 1.04rem;
+  letter-spacing: 0.02em;
+  padding: 0.4em 0.9em;
+  white-space: nowrap;
+  will-change: opacity, transform;
 }
-.span__opt:hover { color: var(--ink-soft); }
-.span__opt .span__u { opacity: 0.5; margin-left: 0.15em; font-size: 0.82em; }
-.span__opt.is-on { color: var(--ink); }
-.span__opt.is-on::after {
-  content: "";
+.wheel__item small { opacity: 0.5; font-size: 0.7em; margin-left: 0.12em; }
+.wheel__item[data-mode] { font-style: italic; letter-spacing: 0.08em; }
+
+/* Marcador do centro: a brasa que aponta o valor selecionado */
+.wheel__marker {
   position: absolute;
-  left: 50%; bottom: 0.15em;
-  width: 4px; height: 4px;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: var(--accent);
   transform: translateX(-50%);
   box-shadow: 0 0 8px var(--accent);
-}
-.span__opt--mode { font-style: italic; letter-spacing: 0.1em; }
-.span__sep {
-  width: 1px; height: 0.9rem;
-  margin: 0 0.4rem;
-  background: var(--ink-ghost);
+  pointer-events: none;
+  transition: background 700ms linear;
 }
 
 .read {
   display: inline-flex;
   align-items: baseline;
   gap: 0.9rem;
-  margin-left: auto;
 }
 .read__time {
   font-family: var(--mono);
@@ -376,17 +402,7 @@ body {
   .bar__tag { display: none; }
   .fuse { left: -1.1rem; }
   .note__text { min-height: 38vh; }
-  .dock { justify-content: center; gap: 0.6rem 0.4rem; padding-top: 0.4rem; }
-  .read { margin-left: 0; width: 100%; justify-content: center; }
-  .span { flex-wrap: wrap; justify-content: center; }
-  .span__opt {
-    font-size: 0.86rem;
-    padding: 0.55em 0.7em;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-  }
-  .span__opt.is-on::after { bottom: 0.45em; }
+  .wheel__item { font-size: 1.08rem; padding: 0.55em 1em; }
 }
 
 /* --- Acessibilidade: movimento reduzido ----------------------------------- */

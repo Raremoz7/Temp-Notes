@@ -2,6 +2,8 @@
    app.js — orquestração de lapso
    Dois modos: "prazo" (contagem regressiva) e "desabafo" (a nota se esvai
    quando você para de escrever). Um único loop conduz calor, pavio e morte.
+   A escolha de tempo é uma roda horizontal com snap — o valor no centro é o
+   escolhido, como o seletor do timer do celular, deitado.
    ========================================================================= */
 
 (function () {
@@ -10,8 +12,8 @@
   var root   = document.documentElement;
   var text   = document.getElementById("text");
   var note   = document.getElementById("note");
-  var dock   = document.getElementById("dock");
-  var spanEl = document.getElementById("span");
+  var wheel  = document.getElementById("wheel");
+  var track  = document.getElementById("wheelTrack");
   var readEl = document.getElementById("read");
   var timeEl = document.getElementById("time");
   var hintEl = document.getElementById("hint");
@@ -19,21 +21,29 @@
   var againEl = document.getElementById("again");
   var canvas = document.querySelector(".ash");
 
+  var items = Array.prototype.slice.call(track.querySelectorAll(".wheel__item"));
   var dissolve = window.createDissolve(canvas);
+
+  function prefersReduce() {
+    return window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
 
   // Constantes do modo desabafo
   var GRACE = 1900;   // fôlego antes de começar a se esvair
   var DRAIN = 6200;   // tempo até sumir de vez, parado
 
   var state = {
-    mode: "timed",     // "timed" | "desabafo"
-    durationMs: 60000, // duração escolhida no modo prazo
-    running: false,    // já começou a correr?
+    mode: "timed",
+    durationMs: 60000,
+    running: false,
     dead: false,
-    startAt: 0,        // quando a contagem começou (timed)
-    lastInput: 0,      // último toque de tecla (desabafo)
-    momentum: 1        // fôlego restante (desabafo, 1..0)
+    startAt: 0,
+    lastInput: 0,
+    momentum: 1
   };
+
+  var selected = null;
 
   /* ---- utilidades ---- */
 
@@ -50,34 +60,7 @@
     root.style.setProperty("--burn", burn.toFixed(3));
   }
 
-  function hasContent() {
-    return text.value.trim().length > 0;
-  }
-
-  /* ---- seleção de tempo / modo ---- */
-
-  function selectOption(btn) {
-    var opts = spanEl.querySelectorAll(".span__opt");
-    for (var i = 0; i < opts.length; i++) {
-      opts[i].classList.remove("is-on");
-      opts[i].setAttribute("aria-checked", "false");
-    }
-    btn.classList.add("is-on");
-    btn.setAttribute("aria-checked", "true");
-
-    if (btn.dataset.mode === "desabafo") {
-      state.mode = "desabafo";
-      hintEl.textContent = "não pare de escrever";
-      timeEl.textContent = "∞";
-    } else {
-      state.mode = "timed";
-      state.durationMs = parseInt(btn.dataset.secs, 10) * 1000;
-      hintEl.textContent = "começa quando você escrever";
-      timeEl.textContent = fmt(state.durationMs);
-    }
-    // Trocar de modo/tempo antes de começar reinicia o relógio.
-    if (!state.running) resetClocks();
-  }
+  function hasContent() { return text.value.trim().length > 0; }
 
   function resetClocks() {
     state.running = false;
@@ -90,10 +73,116 @@
     timeEl.classList.remove("pulse");
   }
 
-  spanEl.addEventListener("click", function (e) {
-    var btn = e.target.closest(".span__opt");
-    if (btn) selectOption(btn);
+  /* ---- a roda de tempo ---- */
+
+  function setSelected(item) {
+    if (!item || item === selected) return;
+    selected = item;
+    for (var i = 0; i < items.length; i++) {
+      var on = items[i] === item;
+      items[i].classList.toggle("is-on", on);
+      items[i].setAttribute("aria-checked", on ? "true" : "false");
+    }
+    if (item.dataset.mode === "desabafo") {
+      state.mode = "desabafo";
+    } else {
+      state.mode = "timed";
+      state.durationMs = parseInt(item.dataset.secs, 10) * 1000;
+    }
+    if (!state.running) {
+      resetClocks();
+      timeEl.textContent = state.mode === "desabafo" ? "∞" : fmt(state.durationMs);
+      hintEl.textContent = state.mode === "desabafo"
+        ? "não pare de escrever" : "começa quando você escrever";
+    }
+  }
+
+  // Profundidade + detecção do item central. Roda a cada frame de scroll.
+  var rafPending = false;
+  function onScroll() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(function () { rafPending = false; updateWheel(); });
+  }
+
+  function updateWheel() {
+    var wr = wheel.getBoundingClientRect();
+    var cx = wr.left + wr.width / 2;
+    var half = wr.width / 2 || 1;
+    var nearest = null, best = Infinity;
+    for (var i = 0; i < items.length; i++) {
+      var r = items[i].getBoundingClientRect();
+      var ic = r.left + r.width / 2;
+      var dist = Math.abs(ic - cx);
+      var norm = Math.min(1, dist / half);
+      items[i].style.opacity = (1 - norm * 0.72).toFixed(3);
+      items[i].style.transform = "scale(" + (1 - norm * 0.34).toFixed(3) + ")";
+      if (dist < best) { best = dist; nearest = items[i]; }
+    }
+    if (!state.running) setSelected(nearest);
+  }
+
+  function centerItem(item, instant) {
+    if (!item) return;
+    item.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: (instant || prefersReduce()) ? "auto" : "smooth"
+    });
+  }
+
+  // Clique num item leva ele ao centro
+  items.forEach(function (it) {
+    it.addEventListener("click", function () {
+      if (state.running) return;
+      centerItem(it);
+    });
   });
+
+  // Roda do mouse (vertical) move a roda na horizontal — útil no desktop
+  wheel.addEventListener("wheel", function (e) {
+    if (state.running) return;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      wheel.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // Arraste com o mouse (o toque já rola nativamente)
+  var dragging = false, dragX = 0, dragLeft = 0;
+  wheel.addEventListener("pointerdown", function (e) {
+    if (state.running || e.pointerType !== "mouse") return;
+    dragging = true;
+    dragX = e.clientX;
+    dragLeft = wheel.scrollLeft;
+    try { wheel.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  wheel.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    wheel.scrollLeft = dragLeft - (e.clientX - dragX);
+  });
+  function endDrag() { dragging = false; }
+  wheel.addEventListener("pointerup", endDrag);
+  wheel.addEventListener("pointercancel", endDrag);
+
+  // Teclado: setas movem a seleção
+  wheel.addEventListener("keydown", function (e) {
+    if (state.running) return;
+    var idx = items.indexOf(selected);
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      if (idx < items.length - 1) centerItem(items[idx + 1]);
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (idx > 0) centerItem(items[idx - 1]);
+    } else if (e.key === "Home") {
+      e.preventDefault(); centerItem(items[0]);
+    } else if (e.key === "End") {
+      e.preventDefault(); centerItem(items[items.length - 1]);
+    }
+  });
+
+  wheel.addEventListener("scroll", onScroll, { passive: true });
 
   /* ---- ciclo de vida da escrita ---- */
 
@@ -104,6 +193,7 @@
     state.startAt = performance.now();
     state.lastInput = state.startAt;
     readEl.classList.remove("is-idle");
+    wheel.classList.add("is-locked");
     hintEl.textContent = state.mode === "desabafo" ? "respire e continue" : "sem volta";
   }
 
@@ -112,7 +202,6 @@
     if (!state.running) { begin(); return; }
     state.lastInput = performance.now();
     if (state.mode === "desabafo") {
-      // escrever recupera fôlego
       state.momentum = Math.min(1, state.momentum + 0.06);
     }
     autoGrow();
@@ -133,10 +222,8 @@
         var progress = Math.min(1, elapsed / state.durationMs);
         var heat = Math.pow(progress, 2.2);
         timeEl.textContent = fmt(remaining);
-
         applyTension(heat, progress, remaining, 10000);
         if (remaining <= 0) die();
-
       } else {
         var idle = now - state.lastInput;
         if (idle > GRACE) {
@@ -144,7 +231,6 @@
         }
         state.momentum = Math.max(0, Math.min(1, state.momentum));
         var heatD = 1 - state.momentum;
-        // "tempo" aqui vira fôlego restante
         timeEl.textContent = "∞";
         applyTension(heatD, heatD, state.momentum, 0.42);
         if (state.momentum <= 0) die();
@@ -154,18 +240,10 @@
     requestAnimationFrame(loop);
   }
 
-  /* Converte calor em vinheta, pavio, tremor e pulso. */
   function applyTension(heat, burn, remaining, threshold) {
     setHeat(heat, burn);
-
-    var urgency;
-    if (state.mode === "timed") {
-      urgency = remaining < threshold ? 1 - remaining / threshold : 0;
-    } else {
-      urgency = remaining < threshold ? 1 - remaining / threshold : 0;
-    }
+    var urgency = remaining < threshold ? 1 - remaining / threshold : 0;
     urgency = Math.max(0, Math.min(1, urgency));
-
     if (urgency > 0.02) {
       note.classList.add("is-restless");
       root.style.setProperty("--shake", (urgency * 1.6).toFixed(2));
@@ -185,10 +263,8 @@
     note.classList.remove("is-restless");
     timeEl.classList.remove("pulse");
     timeEl.textContent = state.mode === "timed" ? "0:00" : "—";
-
     text.setAttribute("readonly", "readonly");
     text.blur();
-
     dissolve.run(text, afterDeath);
   }
 
@@ -212,12 +288,8 @@
     text.value = "";
     autoGrow();
     resetClocks();
-    // mantém o modo/tempo escolhido
-    var active = spanEl.querySelector(".span__opt.is-on");
-    if (active) {
-      if (active.dataset.mode === "desabafo") { timeEl.textContent = "∞"; }
-      else { timeEl.textContent = fmt(state.durationMs); }
-    }
+    wheel.classList.remove("is-locked");
+    timeEl.textContent = state.mode === "desabafo" ? "∞" : fmt(state.durationMs);
     hintEl.textContent = state.mode === "desabafo"
       ? "não pare de escrever" : "começa quando você escrever";
     text.focus();
@@ -225,13 +297,24 @@
 
   /* ---- início ---- */
 
-  window.addEventListener("resize", autoGrow);
+  function recenter(instant) {
+    centerItem(selected, instant);
+    requestAnimationFrame(updateWheel);
+  }
+
+  window.addEventListener("resize", function () { autoGrow(); recenter(true); });
+
+  // seleção inicial = item marcado no HTML (1 min)
+  var initial = track.querySelector('.wheel__item[aria-checked="true"]') || items[0];
+  setSelected(initial);
   readEl.classList.add("is-idle");
   autoGrow();
+  requestAnimationFrame(function () { recenter(true); });
   requestAnimationFrame(loop);
 
-  // Foca a superfície de escrita — sem fricção, você já pode começar.
+  // recentra depois que as fontes carregam (métricas mudam)
   window.addEventListener("load", function () {
+    recenter(true);
     if (!("ontouchstart" in window)) text.focus();
   });
 })();

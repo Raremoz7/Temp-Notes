@@ -45,13 +45,19 @@
 </main>
 
 <footer class="dock" id="dock">
-  <div class="span" id="span" role="radiogroup" aria-label="tempo de vida da nota">
-    <button class="span__opt" type="button" data-secs="15" role="radio" aria-checked="false">15<span class="span__u">s</span></button>
-    <button class="span__opt is-on" type="button" data-secs="60" role="radio" aria-checked="true">1<span class="span__u">min</span></button>
-    <button class="span__opt" type="button" data-secs="600" role="radio" aria-checked="false">10<span class="span__u">min</span></button>
-    <button class="span__opt" type="button" data-secs="3600" role="radio" aria-checked="false">1<span class="span__u">h</span></button>
-    <span class="span__sep" aria-hidden="true"></span>
-    <button class="span__opt span__opt--mode" type="button" data-mode="desabafo" role="radio" aria-checked="false">desabafo</button>
+  <div class="wheel" id="wheel" role="radiogroup" aria-label="tempo de vida da nota" tabindex="0">
+    <div class="wheel__track" id="wheelTrack">
+      <button class="wheel__item" type="button" data-mode="desabafo" role="radio" aria-checked="false">desabafo</button>
+      <button class="wheel__item" type="button" data-secs="15" role="radio" aria-checked="false">15<small>s</small></button>
+      <button class="wheel__item" type="button" data-secs="30" role="radio" aria-checked="false">30<small>s</small></button>
+      <button class="wheel__item" type="button" data-secs="60" role="radio" aria-checked="true">1<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="120" role="radio" aria-checked="false">2<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="300" role="radio" aria-checked="false">5<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="600" role="radio" aria-checked="false">10<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="1800" role="radio" aria-checked="false">30<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="3600" role="radio" aria-checked="false">1<small>h</small></button>
+    </div>
+    <span class="wheel__marker" aria-hidden="true"></span>
   </div>
 
   <div class="read" id="read" aria-live="off">
