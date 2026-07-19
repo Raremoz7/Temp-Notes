@@ -1,0 +1,105 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0a0c" />
+<meta name="description" content="lapso — um bloco de notas onde as palavras têm prazo de validade. Escreva o que precisa sair e deixe ir." />
+<title>lapso — palavras com prazo</title>
+
+<link rel="stylesheet" href="assets/css/style.css?v=4" />
+
+<!-- Grão de filme + vinheta quente: matam o aspecto "chapado digital" -->
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<canvas class="ash" aria-hidden="true"></canvas>
+
+<header class="bar">
+  <a class="mark" href="./" aria-label="lapso — recomeçar">
+    <span class="mark__word">lapso</span>
+    <span class="mark__coal" aria-hidden="true"></span>
+  </a>
+  <div class="bar__right">
+    <p class="bar__tag">palavras com prazo de validade</p>
+    <button class="hbtn" id="muralBtn" type="button" hidden>mural</button>
+    <button class="hbtn hbtn--accent" id="newBtn" type="button" hidden>escrever</button>
+    <button class="gear" id="gear" type="button" aria-label="Configurações" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+        <circle cx="12" cy="12" r="3.2"></circle>
+        <path d="M12 2.6v2.6M12 18.8v2.6M4.2 12H1.6M22.4 12h-2.6M5.6 5.6 7.4 7.4M16.6 16.6l1.8 1.8M18.4 5.6 16.6 7.4M7.4 16.6l-1.8 1.8"></path>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="views">
+  <section class="stage" id="stage" hidden>
+    <section class="note" id="note" aria-label="sua nota">
+      <div class="fuse" aria-hidden="true">
+        <span class="fuse__track"></span>
+        <span class="fuse__burn"></span>
+        <span class="fuse__spark"></span>
+      </div>
+
+      <textarea
+        class="note__text"
+        id="text"
+        spellcheck="false"
+        autocomplete="off"
+        autocapitalize="sentences"
+        placeholder="escreva. isto vai desaparecer."
+        aria-label="texto da nota"
+      ></textarea>
+    </section>
+
+    <div class="gone" id="gone" hidden>
+      <p class="gone__line">não resta nada.</p>
+      <button class="gone__again" id="again" type="button">escrever outra</button>
+    </div>
+  </section>
+
+  <section class="mural" id="mural" hidden aria-label="mural de notas">
+    <div class="mural__grid" id="grid"></div>
+    <div class="mural__empty" id="muralEmpty" hidden>
+      <p class="mural__emptyLine">nada por aqui — ainda.</p>
+      <button class="mural__emptyBtn" id="emptyNew" type="button">escrever algo que não deve durar</button>
+    </div>
+  </section>
+</main>
+
+<footer class="dock" id="dock">
+  <div class="wheel" id="wheel" role="radiogroup" aria-label="tempo de vida da nota" tabindex="0">
+    <div class="wheel__track" id="wheelTrack">
+      <button class="wheel__item" type="button" data-mode="desabafo" role="radio" aria-checked="false">desabafo</button>
+      <button class="wheel__item" type="button" data-secs="15" role="radio" aria-checked="false">15<small>s</small></button>
+      <button class="wheel__item" type="button" data-secs="30" role="radio" aria-checked="false">30<small>s</small></button>
+      <button class="wheel__item" type="button" data-secs="60" role="radio" aria-checked="true">1<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="120" role="radio" aria-checked="false">2<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="300" role="radio" aria-checked="false">5<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="600" role="radio" aria-checked="false">10<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="1800" role="radio" aria-checked="false">30<small>min</small></button>
+      <button class="wheel__item" type="button" data-secs="3600" role="radio" aria-checked="false">1<small>h</small></button>
+    </div>
+    <span class="wheel__marker" aria-hidden="true"></span>
+  </div>
+
+  <div class="read" id="read" aria-live="off">
+    <span class="read__time" id="time">1:00</span>
+    <span class="read__hint" id="hint">começa quando você escrever</span>
+  </div>
+</footer>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__scrim" id="scrim"></div>
+  <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet__head">
+      <h2 class="sheet__title" id="sheetTitle">quando o tempo acaba</h2>
+      <button class="sheet__close" id="sheetClose" type="button" aria-label="Fechar">×</button>
+    </div>
+    <p class="sheet__hint">passe o cursor ou toque para ver cada uma</p>
+    <div class="preview">
+      <canvas id="previewCanvas" aria-hidden="true"></canvas>
+    </div>
+    <div class="opts" id="opts" role="radiogroup" aria-label="animação do fim"></div>
+  </div>
+</div>
+
+<script src="assets/js/dissolve.js?v=4"></script>
+<script src="assets/js/app.js?v=4"></script>
