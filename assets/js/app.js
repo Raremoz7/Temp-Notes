@@ -1,578 +1,527 @@
 /* =========================================================================
-   app.js — orquestração de lapso
-   Mural de notas vivas: várias notas com prazo, cada uma contando o próprio
-   tempo. A tela central lista as que ainda vivem; quando o prazo acaba, a
-   nota se desfaz e some para sempre. Persistência local só enquanto vivas.
-   Modo "desabafo" continua transiente (não vai para o mural).
+   app.js — orquestração do Do It Later
+   Router de telas, renderização a partir do estado, roleta, formulários e
+   overlays. Nenhuma regra de negócio mora aqui: isso está em models/store.
    ========================================================================= */
 
-(function () {
-  "use strict";
+import {
+  CATEGORIES, TIMES, ENERGIES, STATUS, FREE_LIMIT,
+  categoryOf, timeOf, energyOf, metaLine, ageLabel, doneLabel,
+} from "./models.js";
+import { Store } from "./store.js";
+import { candidates, pick, spin } from "./roulette.js";
 
-  var root   = document.documentElement;
-  var text   = document.getElementById("text");
-  var note   = document.getElementById("note");
-  var stage  = document.getElementById("stage");
-  var muralEl = document.getElementById("mural");
-  var grid   = document.getElementById("grid");
-  var muralEmpty = document.getElementById("muralEmpty");
-  var emptyNew = document.getElementById("emptyNew");
-  var dock   = document.getElementById("dock");
-  var wheel  = document.getElementById("wheel");
-  var track  = document.getElementById("wheelTrack");
-  var readEl = document.getElementById("read");
-  var timeEl = document.getElementById("time");
-  var hintEl = document.getElementById("hint");
-  var goneEl = document.getElementById("gone");
-  var againEl = document.getElementById("again");
-  var canvas = document.querySelector(".ash");
-  var gear   = document.getElementById("gear");
-  var sheet  = document.getElementById("sheet");
-  var scrim  = document.getElementById("scrim");
-  var sheetClose = document.getElementById("sheetClose");
-  var previewCanvas = document.getElementById("previewCanvas");
-  var optsEl = document.getElementById("opts");
-  var newBtn = document.getElementById("newBtn");
-  var muralBtn = document.getElementById("muralBtn");
-  var home = document.querySelector(".mark");
+const store = new Store();
+const $  = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const escape = (s) => String(s).replace(/[&<>"]/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  var items = Array.prototype.slice.call(track.querySelectorAll(".wheel__item"));
-  var dissolve = window.createDissolve(canvas);
-  var previewer = window.createPreviewer(previewCanvas, text);
+/* ---------------------------------------------------------------- tema ---- */
+function applyTheme() {
+  const t = store.prefs.theme;
+  const root = document.documentElement;
+  if (t === "auto") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", t);
+  const dark = t === "dark" ||
+    (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  const meta = $('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", dark ? "#070b18" : "#bcd0ec");
+}
 
-  function prefersReduce() {
-    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* -------------------------------------------------------------- toast ----- */
+let toastTimer;
+function toast(msg, actionLabel, onAction) {
+  const el = $("#toast"), m = $("#toastMsg"), a = $("#toastAction");
+  m.textContent = msg;
+  clearTimeout(toastTimer);
+  if (actionLabel) {
+    a.textContent = actionLabel; a.hidden = false;
+    a.onclick = () => { hideToast(); onAction && onAction(); };
+  } else { a.hidden = true; a.onclick = null; }
+  el.classList.add("is-on");
+  toastTimer = setTimeout(hideToast, 4200);
+}
+function hideToast() { $("#toast").classList.remove("is-on"); }
+
+/* --------------------------------------------------------- navegação ------ */
+let currentTab = "inbox";
+function go(tab) {
+  currentTab = tab;
+  $$(".screen").forEach((s) => { s.hidden = s.dataset.screen !== tab; });
+  $$(".nav__tab").forEach((t) => t.classList.toggle("is-on", t.dataset.tab === tab));
+  $("#viewport").scrollTo({ top: 0, behavior: "instant" in document.documentElement.style ? "instant" : "auto" });
+  if (tab === "roulette") { syncFilterUI(); renderRouletteState(); }
+}
+$("#nav").addEventListener("click", (e) => {
+  const tab = e.target.closest(".nav__tab");
+  if (tab) go(tab.dataset.tab);
+});
+
+/* ============================================================ GAVETA ====== */
+let inboxCat = ""; // filtro de categoria da gaveta
+
+function renderInbox() {
+  const all = store.active;
+  const list = inboxCat ? all.filter((t) => t.category === inboxCat) : all;
+
+  // subtítulo + badge + contadores
+  const n = all.length;
+  $("#inboxSub").textContent = n === 0 ? "está vazia."
+    : n === 1 ? "tem 1 coisa." : `tem ${n} coisas.`;
+  const badge = $("#navBadge");
+  badge.hidden = n === 0; badge.textContent = n;
+  $("#throwCount").textContent = n === 1 ? "1 coisa na gaveta" : `${n} coisas na gaveta`;
+
+  // chips de categoria (só as que têm tarefas)
+  const bar = $("#inboxFilters");
+  const used = new Set(all.map((t) => t.category));
+  bar.innerHTML = `<button class="chip ${inboxCat === "" ? "is-on" : ""}" data-catfilter="" type="button">tudo</button>` +
+    CATEGORIES.filter((c) => used.has(c.id)).map((c) =>
+      `<button class="chip chip--${c.accent} ${inboxCat === c.id ? "is-on" : ""}" data-catfilter="${c.id}" type="button">${c.label.toLowerCase()}</button>`
+    ).join("");
+
+  const listEl = $("#inboxList"), empty = $("#inboxEmpty");
+  if (all.length === 0) {
+    listEl.innerHTML = ""; empty.hidden = false; return;
   }
+  empty.hidden = true;
+  listEl.innerHTML = list.map(taskCardHTML).join("");
+}
 
-  /* ---- armazenamento ---- */
+function taskCardHTML(t) {
+  const cat = categoryOf(t.category);
+  const meta = [];
+  const tm = timeOf(t.time);
+  if (tm.value !== null) meta.push(tm.label);
+  meta.push(energyOf(t.energy).short);
+  const age = store.prefs.hideAge ? "" :
+    `<span class="task__age">${ageLabel(t.createdAt).replace("guardada ", "")}</span>`;
+  const out = t.outside ? `<span class="task__out">sair de casa</span>` : "";
+  return `<button class="task" data-open="${t.id}" type="button" style="--task-accent:var(--${cat.accent})">
+    <div class="task__top">
+      <h3 class="task__title">${escape(t.title)}</h3>
+      <span class="task__cat">${escape(cat.label)}</span>
+    </div>
+    <div class="task__meta">${meta.map((m) => `<span>${escape(m)}</span>`).join("")}${out}${age}</div>
+  </button>`;
+}
 
-  var STORE_STYLE = "lapso:endStyle";
-  var STORE_NOTES = "lapso:notes";
+$("#inboxFilters").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-catfilter]");
+  if (!c) return;
+  inboxCat = c.dataset.catfilter;
+  renderInbox();
+});
+$("#inboxList").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-open]");
+  if (b) openTaskForm(store.byId(b.dataset.open));
+});
+$$("[data-add]").forEach((b) => b.addEventListener("click", () => openTaskForm(null)));
 
-  function loadStyle() { try { return localStorage.getItem(STORE_STYLE) || "brasa"; } catch (_) { return "brasa"; } }
-  function saveStyle(v) { try { localStorage.setItem(STORE_STYLE, v); } catch (_) {} }
-  var endStyle = loadStyle();
+/* ============================================================ FEITAS ====== */
+function renderDone() {
+  const done = store.done;
+  $("#statDone").textContent = done.length;
+  $("#statStored").textContent = store.activeCount;
+  const list = $("#doneList"), empty = $("#doneEmpty");
+  if (!done.length) { list.innerHTML = ""; empty.hidden = false; return; }
+  empty.hidden = true;
+  list.innerHTML = done.map((t) => `
+    <div class="done-item">
+      <div class="done-item__text">
+        <div class="done-item__title">${escape(t.title)}</div>
+        <div class="done-item__when">${doneLabel(t.completedAt)}</div>
+      </div>
+      <button class="icon-btn" data-restore="${t.id}" type="button" aria-label="Restaurar para a gaveta" title="Devolver para a gaveta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5v5h5M4.5 10a8 8 0 1 1-1 5"/></svg>
+      </button>
+    </div>`).join("");
+}
+$("#doneList").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-restore]");
+  if (!b) return;
+  store.restore(b.dataset.restore);
+  toast("Voltou para a gaveta.");
+});
 
-  function loadNotes() {
-    try { return JSON.parse(localStorage.getItem(STORE_NOTES) || "[]"); } catch (_) { return []; }
+/* ==================================================== FORM de tarefa ====== */
+let draft = null;      // seleção atual do formulário
+let editingId = null;
+
+function chipRow(items, current, key) {
+  return items.map((it) => {
+    const accent = key === "cat" ? (it.accent || "blue") : "blue";
+    const val = it.id;
+    const label = (it.label || it.short || "").toLowerCase();
+    const on = current === val ? "is-on" : "";
+    const cls = key === "cat" ? `chip chip--${accent} ${on}` : `chip chip--blue ${on}`;
+    return `<button class="${cls}" data-pick="${key}" data-val="${val}" type="button">${escape(label)}</button>`;
+  }).join("");
+}
+
+function openTaskForm(task) {
+  editingId = task ? task.id : null;
+  // bloqueio do limite gratuito só ao criar
+  if (!task && store.atLimit()) { openLimit(); return; }
+
+  draft = task
+    ? { category: task.category, time: task.time, energy: task.energy, outside: task.outside }
+    : { category: "outros", time: "tnone", energy: "med", outside: false };
+
+  $("#taskFormTitle").textContent = task ? "Editar pendência" : "Guardar uma pendência";
+  $("#taskSubmit").textContent = task ? "Salvar" : "Guardar na gaveta";
+  $("#fTitle").value = task ? task.title : "";
+  $("#fNote").value = task ? task.note : "";
+  $("#fOutside").checked = draft.outside;
+  $("#taskDelete").hidden = !task;
+
+  $("#fFormCat").innerHTML = chipRow(CATEGORIES, draft.category, "cat");
+  $("#fFormTime").innerHTML = chipRow(TIMES, draft.time, "time");
+  $("#fFormEnergy").innerHTML = chipRow(ENERGIES, draft.energy, "energy");
+
+  openOverlay("#taskSheet");
+  setTimeout(() => $("#fTitle").focus(), 120);
+}
+
+$("#taskForm").addEventListener("click", (e) => {
+  const p = e.target.closest("[data-pick]");
+  if (!p) return;
+  const key = p.dataset.pick, val = p.dataset.val;
+  const map = { cat: "category", time: "time", energy: "energy" };
+  draft[map[key]] = val;
+  const container = p.parentElement;
+  $$(".chip", container).forEach((c) => c.classList.toggle("is-on", c === p));
+});
+
+$("#fOutside").addEventListener("change", (e) => { draft.outside = e.target.checked; });
+
+$("#taskForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const title = $("#fTitle").value.trim();
+  if (!title) { $("#fTitle").focus(); return; }
+  const note = $("#fNote").value.trim();
+  const data = { title, note, ...draft };
+  if (editingId) {
+    store.update(editingId, data);
+    toast("Pendência atualizada.");
+  } else {
+    store.add(data);
+    toast("Guardado na gaveta.");
   }
-  function saveNotes(arr) {
-    try { localStorage.setItem(STORE_NOTES, JSON.stringify(arr)); } catch (_) {}
-  }
-  function aliveNotes() {
-    var now = Date.now();
-    var all = loadNotes();
-    var alive = all.filter(function (n) { return n.deathAt && n.deathAt > now; });
-    if (alive.length !== all.length) saveNotes(alive);
-    alive.sort(function (a, b) { return a.deathAt - b.deathAt; });
-    return alive;
-  }
-  function upsertNote(n) {
-    var a = loadNotes();
-    var i = -1;
-    for (var k = 0; k < a.length; k++) { if (a[k].id === n.id) { i = k; break; } }
-    if (i >= 0) a[i] = n; else a.push(n);
-    saveNotes(a);
-  }
-  function removeNote(id) {
-    saveNotes(loadNotes().filter(function (n) { return n.id !== id; }));
-  }
-  function newId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  }
+  closeOverlay("#taskSheet");
+});
 
-  /* ---- estado do editor ---- */
+$("#taskDelete").addEventListener("click", () => {
+  if (!editingId) return;
+  const t = store.byId(editingId);
+  const snapshot = { ...t };
+  store.remove(editingId);
+  closeOverlay("#taskSheet");
+  toast("Excluída.", "desfazer", () => store.add(snapshot));
+});
 
-  var state = {
-    mode: "timed",
-    durationMs: 60000,
-    running: false,
-    dead: false,
-    startAt: 0,
-    lastInput: 0,
-    momentum: 1
-  };
-  var current = null;       // nota aberta no editor
-  var selected = null;      // item selecionado na roda
-  var paused = false;       // congela a contagem com as configurações abertas
+/* ======================================================= ROLETA / filtros = */
+const filters = { time: "", energy: "", place: "", category: "" };
 
-  var GRACE = 1900, DRAIN = 6200;
+function buildCategoryFilterChips() {
+  $("#fCategory").innerHTML =
+    `<button class="chip ${filters.category === "" ? "is-on" : ""}" data-fcat="" type="button">todas</button>` +
+    CATEGORIES.map((c) =>
+      `<button class="chip chip--${c.accent} ${filters.category === c.id ? "is-on" : ""}" data-fcat="${c.id}" type="button">${c.label.toLowerCase()}</button>`
+    ).join("");
+}
 
-  /* ---- utilidades ---- */
+function syncFilterUI() {
+  const setSeg = (id, key, attr) => $$(`#${id} .seg__opt`).forEach((o) =>
+    o.classList.toggle("is-on", (o.dataset[attr] || "") === filters[key]));
+  setSeg("fTime", "time", "time");
+  setSeg("fEnergy", "energy", "energy");
+  setSeg("fPlace", "place", "place");
+  buildCategoryFilterChips();
+  updateFilterSummary();
+}
 
-  function fmt(ms) {
-    if (ms < 0) ms = 0;
-    var total = Math.ceil(ms / 1000);
-    if (total >= 3600) {
-      var h = Math.floor(total / 3600);
-      var mm = Math.floor((total % 3600) / 60);
-      return h + "h" + (mm < 10 ? "0" + mm : mm);
-    }
-    var m = Math.floor(total / 60);
-    var s = total % 60;
-    return m + ":" + (s < 10 ? "0" + s : s);
-  }
-  function setHeat(heat, burn) {
-    root.style.setProperty("--heat", heat.toFixed(3));
-    root.style.setProperty("--burn", burn.toFixed(3));
-  }
-  function hasContent() { return text.value.trim().length > 0; }
+function updateFilterSummary() {
+  const parts = [];
+  if (filters.time) parts.push("até " + timeOf(filters.time).label.replace("+1 h", "mais de 1 h"));
+  if (filters.energy) parts.push(energyOf(filters.energy).short);
+  if (filters.place === "home") parts.push("sem sair de casa");
+  if (filters.place === "out") parts.push("na rua");
+  if (filters.category) parts.push(categoryOf(filters.category).label.toLowerCase());
+  const el = $("#filterSummary");
+  el.textContent = parts.length
+    ? "Só o que dá pra fazer com " + parts.join(", ") + "."
+    : "Qualquer coisa serve.";
+}
 
-  function resetClocks() {
-    state.running = false;
-    state.startAt = 0;
-    state.lastInput = 0;
-    state.momentum = 1;
-    setHeat(0, 0);
-    note.classList.remove("is-restless");
-    readEl.classList.add("is-idle");
-    timeEl.classList.remove("pulse");
-  }
+function renderRouletteState() {
+  const list = candidates(store.tasks, filters);
+  const btn = $("#throwBtn"), empty = $("#rouletteEmpty");
+  btn.disabled = list.length === 0;
+  empty.hidden = list.length !== 0;
+  $("#throwCount").textContent = list.length === 1
+    ? "1 combina com os filtros" : `${list.length} combinam com os filtros`;
+}
 
-  /* ---- roda de tempo ---- */
+$("#fTime").addEventListener("click", (e) => segPick(e, "time", "time"));
+$("#fEnergy").addEventListener("click", (e) => segPick(e, "energy", "energy"));
+$("#fPlace").addEventListener("click", (e) => segPick(e, "place", "place"));
+function segPick(e, key, attr) {
+  const o = e.target.closest(".seg__opt");
+  if (!o) return;
+  filters[key] = o.dataset[attr] || "";
+  syncFilterUI(); renderRouletteState();
+}
+$("#fCategory").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-fcat]");
+  if (!c) return;
+  filters.category = c.dataset.fcat;
+  syncFilterUI(); renderRouletteState();
+});
 
-  function markWheel(item) {
-    for (var i = 0; i < items.length; i++) {
-      var on = items[i] === item;
-      items[i].classList.toggle("is-on", on);
-      items[i].setAttribute("aria-checked", on ? "true" : "false");
-    }
-    selected = item;
-  }
+/* -------------------------------------------------------- o sorteio ------- */
+let lastWinnerId = null;
 
-  function applyWheelToState() {
-    if (!selected) return;
-    if (selected.dataset.mode === "desabafo") state.mode = "desabafo";
-    else { state.mode = "timed"; state.durationMs = parseInt(selected.dataset.secs, 10) * 1000; }
-  }
+async function throwMission() {
+  const list = candidates(store.tasks, filters);
+  if (!list.length) return;
+  const winner = pick(list, list.length > 1 ? lastWinnerId : null);
+  lastWinnerId = winner.id;
+  openMission(winner, list);
+}
 
-  function setSelected(item) {
-    if (!item || item === selected) return;
-    markWheel(item);
-    if (item.dataset.mode === "desabafo") {
-      state.mode = "desabafo";
-    } else {
-      state.mode = "timed";
-      state.durationMs = parseInt(item.dataset.secs, 10) * 1000;
-      if (current) current.durationMs = state.durationMs;
-    }
-    if (!state.running) {
-      resetClocks();
-      timeEl.textContent = state.mode === "desabafo" ? "∞" : fmt(state.durationMs);
-      hintEl.textContent = state.mode === "desabafo"
-        ? "não pare de escrever" : "começa quando você escrever";
-    }
-  }
+$("#throwBtn").addEventListener("click", throwMission);
 
-  var rafPending = false;
-  function onScroll() {
-    if (rafPending) return;
-    rafPending = true;
-    requestAnimationFrame(function () { rafPending = false; updateWheel(); });
-  }
-  function updateWheel() {
-    var wr = wheel.getBoundingClientRect();
-    var cx = wr.left + wr.width / 2;
-    var half = wr.width / 2 || 1;
-    var nearest = null, best = Infinity;
-    for (var i = 0; i < items.length; i++) {
-      var r = items[i].getBoundingClientRect();
-      var ic = r.left + r.width / 2;
-      var dist = Math.abs(ic - cx);
-      var norm = Math.min(1, dist / half);
-      items[i].style.opacity = (1 - norm * 0.72).toFixed(3);
-      items[i].style.transform = "scale(" + (1 - norm * 0.34).toFixed(3) + ")";
-      if (dist < best) { best = dist; nearest = items[i]; }
-    }
-    if (!state.running) setSelected(nearest);
-  }
-  function centerItem(item, instant) {
-    if (!item) return;
-    item.scrollIntoView({
-      inline: "center", block: "nearest",
-      behavior: (instant || prefersReduce()) ? "auto" : "smooth"
+/* ===================================================== MISSÃO (modal) ===== */
+let missionTask = null;
+
+function openMission(winner, pool) {
+  missionTask = winner;
+  renderMissionDraw(winner);
+  openOverlay("#missionModal");
+  const titleEl = $("#missionTitle");
+  const stage = $("#missionStage");
+  stage.classList.add("is-active");
+  spin(titleEl, pool, winner, { suspense: store.prefs.rouletteSuspense })
+    .then(() => {
+      stage.classList.remove("is-active");
+      const reveal = $("#missionReveal");
+      if (reveal) reveal.classList.add("is-revealed");
     });
-  }
-  function selectWheelByDuration(ms) {
-    var secs = Math.round(ms / 1000);
-    var it = track.querySelector('.wheel__item[data-secs="' + secs + '"]');
-    if (it) { markWheel(it); centerItem(it, true); requestAnimationFrame(updateWheel); }
-  }
+}
 
-  items.forEach(function (it) {
-    it.addEventListener("click", function () { if (!state.running) centerItem(it); });
+function missionMetaHTML(t) {
+  const cat = categoryOf(t.category);
+  const tm = timeOf(t.time);
+  const pills = [`<span class="pill pill--cat">${escape(cat.label)}</span>`];
+  if (tm.value !== null) pills.push(`<span class="pill">${tm.label}</span>`);
+  pills.push(`<span class="pill">${energyOf(t.energy).short}</span>`);
+  if (t.outside) pills.push(`<span class="pill pill--out">sair de casa</span>`);
+  return pills.join("");
+}
+
+/* estado 1: acabou de sortear */
+function renderMissionDraw(t) {
+  const cat = categoryOf(t.category);
+  const age = store.prefs.hideAge ? "" : `<p class="said" style="margin-top:0.8rem">${ageLabel(t.createdAt)}.</p>`;
+  const note = t.note ? `<p class="mission__note">"${escape(t.note)}"</p>` : "";
+  $("#missionBody").style.setProperty("--task-accent", `var(--${cat.accent})`);
+  $("#missionBody").innerHTML = `
+    <p class="mission__kicker">Uma coisa para fazer</p>
+    <div class="mission__stage" id="missionStage">
+      <h2 class="mission__title is-spinning" id="missionTitle">${escape(t.title)}</h2>
+    </div>
+    <div class="mission__reveal" id="missionReveal">
+      ${age}
+      ${note}
+      <div class="mission__meta">${missionMetaHTML(t)}</div>
+      <div class="mission__actions">
+        <button class="btn btn--primary btn--lg btn--block" data-m="accept" type="button">Aceitar missão</button>
+        <div class="mission__secondary">
+          <button class="btn" data-m="again" type="button">Sortear de novo</button>
+          <button class="btn" data-m="release" type="button">Devolver</button>
+        </div>
+        <button class="btn btn--ghost btn--block" data-m="done" type="button">Já fiz isso</button>
+      </div>
+    </div>`;
+}
+
+/* estado 2: missão aceita, em andamento */
+function renderMissionDoing(t) {
+  const cat = categoryOf(t.category);
+  const note = t.note ? `<p class="mission__note">"${escape(t.note)}"</p>` : "";
+  $("#missionBody").style.setProperty("--task-accent", `var(--${cat.accent})`);
+  $("#missionBody").innerHTML = `
+    <p class="mission__kicker" style="color:var(--yellow)">Missão em andamento</p>
+    <div class="mission__stage">
+      <h2 class="mission__title">${escape(t.title)}</h2>
+    </div>
+    ${note}
+    <div class="mission__meta">${missionMetaHTML(t)}</div>
+    <div class="mission__actions">
+      <button class="btn btn--yellow btn--lg btn--block" data-m="done" type="button">Concluir missão</button>
+      <button class="btn btn--ghost btn--block" data-m="release" type="button">Devolver para a gaveta</button>
+    </div>`;
+}
+
+/* estado 3: concluída — confirmação leve, sem festa exagerada */
+function renderMissionDone(t) {
+  $("#missionBody").innerHTML = `
+    <div class="done-flash">
+      <div class="done-flash__mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 12.5l5 5 11-11"/></svg></div>
+      <p class="done-flash__line">Saiu da sua cabeça.</p>
+      <p class="said">"${escape(t.title)}" foi pra pilha das concluídas.</p>
+      <button class="btn btn--block" data-m="close" type="button">Fechar</button>
+    </div>`;
+}
+
+$("#missionModal").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-m]");
+  if (!b || !missionTask) return;
+  const act = b.dataset.m;
+  if (act === "accept") {
+    store.accept(missionTask.id);
+    renderMissionDoing(store.byId(missionTask.id));
+  } else if (act === "again") {
+    const list = candidates(store.tasks, filters);
+    if (!list.length) { closeOverlay("#missionModal"); renderRouletteState(); return; }
+    const next = pick(list, list.length > 1 ? missionTask.id : null);
+    lastWinnerId = next.id;
+    openMission(next, list);
+  } else if (act === "release") {
+    store.release(missionTask.id);
+    closeOverlay("#missionModal");
+    toast("De volta para a gaveta. Sem culpa.");
+  } else if (act === "done") {
+    store.complete(missionTask.id);
+    renderMissionDone(missionTask);
+  } else if (act === "close") {
+    closeOverlay("#missionModal");
+  }
+});
+
+/* ===================================================== limite / pro ======= */
+function openLimit() { openOverlay("#limitModal"); }
+$("#limitPro").addEventListener("click", () => { closeOverlay("#limitModal"); openPro(); });
+$("#openPro").addEventListener("click", () => openPro());
+
+const PERKS = [
+  ["Tarefas ilimitadas", "Sem o teto de 30 pendências na gaveta."],
+  ["Filtros completos", "Tempo, energia, categoria, tags e localização."],
+  ["Tags personalizadas", "Organize do seu jeito, além das categorias."],
+  ["Temas e skins", "Novas peles visuais além do claro e do escuro."],
+  ["Modo Sem Culpa", "Some com prazos, sequências e qualquer cobrança."],
+  ["Widgets e backup", "Sua gaveta na tela inicial e sincronizada."],
+];
+function openPro() {
+  $("#proPerks").innerHTML = PERKS.map(([t, d]) => `
+    <div class="perk">
+      <span class="perk__mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12.5l5 5 11-11"/></svg></span>
+      <div><div class="perk__t">${t}</div><div class="perk__d">${d}</div></div>
+    </div>`).join("");
+  openOverlay("#proSheet");
+}
+$("#proBuy").addEventListener("click", () => {
+  closeOverlay("#proSheet");
+  toast("É só um protótipo — nada foi cobrado. 😌");
+});
+
+/* ===================================================== overlays genéricos = */
+function openOverlay(sel) { const el = $(sel); el.hidden = false; document.body.style.overflow = "hidden"; }
+function closeOverlay(sel) { const el = $(sel); el.hidden = true; if (!anyOverlayOpen()) document.body.style.overflow = ""; }
+function anyOverlayOpen() { return $$(".overlay").some((o) => !o.hidden); }
+document.addEventListener("click", (e) => {
+  const c = e.target.closest("[data-close]");
+  if (c) { const ov = c.closest(".overlay"); if (ov) closeOverlay("#" + ov.id); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { const open = $$(".overlay").find((o) => !o.hidden); if (open) closeOverlay("#" + open.id); }
+});
+
+/* ===================================================== PERFIL / prefs ===== */
+function syncPrefsUI() {
+  $$("#themeSeg .seg__opt").forEach((o) =>
+    o.classList.toggle("is-on", o.dataset.themeOpt === store.prefs.theme));
+  $("#prefSuspense").checked = store.prefs.rouletteSuspense;
+  $("#prefHideAge").checked = store.prefs.hideAge;
+  $("#prefPro").checked = store.prefs.pro;
+}
+$("#themeSeg").addEventListener("click", (e) => {
+  const o = e.target.closest("[data-theme-opt]");
+  if (!o) return;
+  store.setPref("theme", o.dataset.themeOpt);
+  applyTheme();
+});
+$("#prefSuspense").addEventListener("change", (e) => store.setPref("rouletteSuspense", e.target.checked));
+$("#prefHideAge").addEventListener("change", (e) => store.setPref("hideAge", e.target.checked));
+$("#prefPro").addEventListener("change", (e) => {
+  store.setPref("pro", e.target.checked);
+  toast(e.target.checked ? "Pro simulado ativado." : "De volta ao gratuito.");
+});
+$("#resetDemo").addEventListener("click", () => {
+  store.reset();
+  toast("Demonstração recomeçada.");
+  applyTheme(); syncPrefsUI();
+  startOnboarding();
+});
+
+/* ===================================================== onboarding ========= */
+let slide = 0;
+const SLIDES = 3;
+function startOnboarding() {
+  slide = 0;
+  const dots = $("#onbDots");
+  dots.innerHTML = Array.from({ length: SLIDES }, (_, i) =>
+    `<span class="onb__dot ${i === 0 ? "is-on" : ""}"></span>`).join("");
+  showSlide(0);
+  $("#onb").hidden = false;
+  $("#app").hidden = true;
+}
+function showSlide(i) {
+  $$(".onb__slide").forEach((s, idx) => {
+    s.classList.toggle("is-on", idx === i);
+    s.classList.toggle("is-past", idx < i);
   });
-  wheel.addEventListener("wheel", function (e) {
-    if (state.running) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { wheel.scrollLeft += e.deltaY; e.preventDefault(); }
-  }, { passive: false });
-  var dragging = false, dragX = 0, dragLeft = 0;
-  wheel.addEventListener("pointerdown", function (e) {
-    if (state.running || e.pointerType !== "mouse") return;
-    dragging = true; dragX = e.clientX; dragLeft = wheel.scrollLeft;
-    try { wheel.setPointerCapture(e.pointerId); } catch (_) {}
-  });
-  wheel.addEventListener("pointermove", function (e) {
-    if (!dragging) return; wheel.scrollLeft = dragLeft - (e.clientX - dragX);
-  });
-  function endDrag() { dragging = false; }
-  wheel.addEventListener("pointerup", endDrag);
-  wheel.addEventListener("pointercancel", endDrag);
-  wheel.addEventListener("keydown", function (e) {
-    if (state.running) return;
-    var idx = items.indexOf(selected);
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); if (idx < items.length - 1) centerItem(items[idx + 1]); }
-    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); if (idx > 0) centerItem(items[idx - 1]); }
-    else if (e.key === "Home") { e.preventDefault(); centerItem(items[0]); }
-    else if (e.key === "End") { e.preventDefault(); centerItem(items[items.length - 1]); }
-  });
-  wheel.addEventListener("scroll", onScroll, { passive: true });
+  $$("#onbDots .onb__dot").forEach((d, idx) => d.classList.toggle("is-on", idx === i));
+  $("#onbNext").textContent = i === SLIDES - 1 ? "Começar" : "Próximo";
+  $("#onbSkip").style.visibility = i === SLIDES - 1 ? "hidden" : "visible";
+}
+$("#onbNext").addEventListener("click", () => {
+  if (slide < SLIDES - 1) { slide++; showSlide(slide); }
+  else finishOnboarding();
+});
+$("#onbSkip").addEventListener("click", finishOnboarding);
+function finishOnboarding() {
+  store.markOnboarded();
+  $("#onb").hidden = true;
+  $("#app").hidden = false;
+  go("inbox");
+}
 
-  /* ---- ciclo de vida da escrita ---- */
+/* ===================================================== render global ====== */
+function renderAll() {
+  renderInbox();
+  renderDone();
+  if (currentTab === "roulette") renderRouletteState();
+}
+store.subscribe(renderAll);
 
-  function begin() {
-    if (state.running || state.dead) return;
-    if (!hasContent()) return;
-    state.running = true;
-    if (state.mode === "timed") {
-      current.createdAt = Date.now();
-      current.durationMs = state.durationMs;
-      current.deathAt = Date.now() + state.durationMs;
-      saveCurrent();
-    } else {
-      state.startAt = performance.now();
-      state.lastInput = performance.now();
-    }
-    readEl.classList.remove("is-idle");
-    wheel.classList.add("is-locked");
-    hintEl.textContent = state.mode === "desabafo" ? "respire e continue" : "sem volta";
-  }
-
-  var saveTimer = null;
-  function scheduleSave() {
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveCurrent, 400);
-  }
-  function saveCurrent() {
-    if (!current || state.mode !== "timed" || !current.deathAt) return;
-    current.text = text.value;
-    upsertNote({
-      id: current.id, text: current.text, durationMs: current.durationMs,
-      deathAt: current.deathAt, createdAt: current.createdAt
-    });
-  }
-  function persistCurrent() {
-    if (current && state.mode === "timed" && current.deathAt && text.value.trim()) saveCurrent();
-  }
-
-  text.addEventListener("input", function () {
-    if (state.dead) return;
-    if (!state.running) { begin(); return; }
-    if (state.mode === "desabafo") {
-      state.lastInput = performance.now();
-      state.momentum = Math.min(1, state.momentum + 0.06);
-    } else {
-      current.text = text.value;
-      scheduleSave();
-    }
-    autoGrow();
+/* ===================================================== boot =============== */
+function boot() {
+  applyTheme();
+  syncPrefsUI();
+  syncFilterUI();
+  renderAll();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+    if (store.prefs.theme === "auto") applyTheme();
   });
 
-  function autoGrow() {
-    text.style.height = "auto";
-    text.style.height = text.scrollHeight + "px";
-  }
-
-  /* ---- loop do editor ---- */
-
-  function loop(now) {
-    var dt = now - (loop._last || now);
-    if (state.running && !state.dead) {
-      if (state.mode === "timed") {
-        if (paused && current) current.deathAt += dt;
-        var remaining = current.deathAt - Date.now();
-        var progress = Math.max(0, Math.min(1, 1 - remaining / current.durationMs));
-        var heat = Math.pow(progress, 2.2);
-        timeEl.textContent = fmt(remaining);
-        applyTension(heat, progress, remaining, 10000);
-        if (remaining <= 0) die();
-      } else {
-        if (paused) state.lastInput += dt;
-        var idle = now - state.lastInput;
-        if (idle > GRACE) state.momentum -= dt / DRAIN;
-        state.momentum = Math.max(0, Math.min(1, state.momentum));
-        var heatD = 1 - state.momentum;
-        timeEl.textContent = "∞";
-        applyTension(heatD, heatD, state.momentum, 0.42);
-        if (state.momentum <= 0) die();
-      }
-    }
-    loop._last = now;
-    requestAnimationFrame(loop);
-  }
-
-  function applyTension(heat, burn, remaining, threshold) {
-    setHeat(heat, burn);
-    var urgency = remaining < threshold ? 1 - remaining / threshold : 0;
-    urgency = Math.max(0, Math.min(1, urgency));
-    if (urgency > 0.02) {
-      note.classList.add("is-restless");
-      root.style.setProperty("--shake", (urgency * 1.6).toFixed(2));
-      timeEl.classList.add("pulse");
-    } else {
-      note.classList.remove("is-restless");
-      timeEl.classList.remove("pulse");
-    }
-  }
-
-  /* ---- a morte ---- */
-
-  function die() {
-    if (state.dead) return;
-    state.dead = true;
-    state.running = false;
-    note.classList.remove("is-restless");
-    timeEl.classList.remove("pulse");
-    timeEl.textContent = state.mode === "timed" ? "0:00" : "—";
-    if (current && state.mode === "timed" && current.deathAt) removeNote(current.id);
-    text.setAttribute("readonly", "readonly");
-    text.blur();
-    dissolve.run(text, endStyle, afterDeath);
-  }
-  function afterDeath() {
-    text.value = "";
-    text.style.color = "";
-    text.style.caretColor = "";
-    text.style.height = "auto";
-    text.style.display = "none";
-    setHeat(0, 0);
-    goneEl.hidden = false;
-  }
-
-  againEl.addEventListener("click", function () { showEditor(null); });
-
-  /* ---- configurações: animação do fim ---- */
-
-  var sheetOpen = false;
-
-  (function buildOpts() {
-    var styles = window.LAPSO_STYLES || [];
-    styles.forEach(function (s) {
-      var b = document.createElement("button");
-      b.className = "opt"; b.type = "button";
-      b.setAttribute("role", "radio"); b.dataset.style = s.id;
-      b.innerHTML = '<span class="opt__name">' + s.name + '</span>' +
-                    '<span class="opt__desc">' + s.desc + '</span>';
-      b.addEventListener("mouseenter", function () { if (sheetOpen) previewer.play(s.id); });
-      b.addEventListener("focus", function () { if (sheetOpen) previewer.play(s.id); });
-      b.addEventListener("mouseleave", function () { if (sheetOpen) previewer.play(endStyle); });
-      b.addEventListener("click", function () { chooseStyle(s.id); });
-      optsEl.appendChild(b);
-    });
-  })();
-  function markStyle() {
-    var opts = optsEl.querySelectorAll(".opt");
-    for (var i = 0; i < opts.length; i++) {
-      var on = opts[i].dataset.style === endStyle;
-      opts[i].classList.toggle("is-sel", on);
-      opts[i].setAttribute("aria-checked", on ? "true" : "false");
-    }
-  }
-  markStyle();
-  function chooseStyle(id) { endStyle = id; saveStyle(id); markStyle(); previewer.play(id); }
-  function openSheet() {
-    if (sheetOpen) return;
-    sheetOpen = true; paused = true;
-    sheet.hidden = false; markStyle();
-    requestAnimationFrame(function () { previewer.play(endStyle); });
-    sheetClose.focus();
-  }
-  function closeSheet() {
-    if (!sheetOpen) return;
-    sheetOpen = false; paused = false;
-    previewer.stop(); sheet.hidden = true; gear.focus();
-  }
-  gear.addEventListener("click", openSheet);
-  scrim.addEventListener("click", closeSheet);
-  sheetClose.addEventListener("click", closeSheet);
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && sheetOpen) closeSheet(); });
-
-  /* ---- roteamento: editor <-> mural ---- */
-
-  function loadEditor(noteObj) {
-    stopMuralLoop();
-    state.dead = false;
-    text.removeAttribute("readonly");
-    text.style.display = "";
-    text.style.color = "";
-    text.style.caretColor = "";
-    goneEl.hidden = true;
-
-    if (noteObj) {
-      // nota existente, contando o tempo
-      current = {
-        id: noteObj.id, text: noteObj.text || "", durationMs: noteObj.durationMs,
-        deathAt: noteObj.deathAt, createdAt: noteObj.createdAt
-      };
-      state.mode = "timed";
-      state.durationMs = current.durationMs;
-      state.running = true;
-      text.value = current.text;
-      wheel.classList.add("is-locked");
-      selectWheelByDuration(current.durationMs);
-      readEl.classList.remove("is-idle");
-      hintEl.textContent = "sem volta";
-      timeEl.textContent = fmt(current.deathAt - Date.now());
-    } else {
-      // nota nova
-      applyWheelToState();
-      current = {
-        id: newId(), text: "",
-        durationMs: state.mode === "timed" ? state.durationMs : 0,
-        deathAt: 0, createdAt: 0
-      };
-      state.running = false;
-      state.momentum = 1;
-      text.value = "";
-      wheel.classList.remove("is-locked");
-      setHeat(0, 0);
-      readEl.classList.add("is-idle");
-      timeEl.textContent = state.mode === "desabafo" ? "∞" : fmt(state.durationMs);
-      hintEl.textContent = state.mode === "desabafo"
-        ? "não pare de escrever" : "começa quando você escrever";
-    }
-    autoGrow();
-    requestAnimationFrame(function () { recenter(true); });
-  }
-
-  function showEditor(noteObj) {
-    muralEl.hidden = true;
-    stage.hidden = false;
-    dock.hidden = false;
-    newBtn.hidden = true;
-    muralBtn.hidden = false;
-    loadEditor(noteObj);
-    if (!("ontouchstart" in window)) text.focus();
-  }
-
-  function showMural() {
-    persistCurrent();
-    state.running = false;
-    state.dead = false;
-    stage.hidden = true;
-    dock.hidden = true;
-    muralEl.hidden = false;
-    newBtn.hidden = false;
-    muralBtn.hidden = true;
-    renderMural();
-    startMuralLoop();
-  }
-
-  /* ---- mural: render + loop ---- */
-
-  function buildCard(n) {
-    var b = document.createElement("button");
-    b.className = "card"; b.type = "button"; b.dataset.id = n.id;
-    var preview = (n.text || "").trim();
-    var pv = document.createElement("p");
-    pv.className = "card__text";
-    if (preview) {
-      pv.textContent = preview.length > 220 ? preview.slice(0, 220) + "…" : preview;
-    } else {
-      pv.className += " card__text--empty";
-      pv.textContent = "(sem palavras)";
-    }
-    var foot = document.createElement("div");
-    foot.className = "card__foot";
-    var t = document.createElement("span");
-    t.className = "card__time";
-    var sp = document.createElement("span");
-    sp.className = "card__spark";
-    foot.appendChild(t); foot.appendChild(sp);
-    b.appendChild(pv); b.appendChild(foot);
-    b.addEventListener("click", function () { openNote(n.id); });
-    b._note = n; b._timeEl = t;
-    return b;
-  }
-
-  function renderMural() {
-    var notes = aliveNotes();
-    grid.innerHTML = "";
-    if (!notes.length) {
-      muralEmpty.hidden = false;
-      grid.hidden = true;
-      return;
-    }
-    muralEmpty.hidden = true;
-    grid.hidden = false;
-    notes.forEach(function (n) { grid.appendChild(buildCard(n)); });
-  }
-
-  function openNote(id) {
-    var n = null, all = loadNotes();
-    for (var i = 0; i < all.length; i++) { if (all[i].id === id) { n = all[i]; break; } }
-    if (!n) { renderMural(); return; }
-    showEditor(n);
-  }
-
-  var muralRaf = null;
-  function muralTick() {
-    if (muralEl.hidden) { muralRaf = null; return; }
-    var now = Date.now();
-    var cards = grid.children;
-    for (var i = 0; i < cards.length; i++) {
-      var card = cards[i];
-      var n = card._note;
-      if (!n) continue;
-      var remaining = n.deathAt - now;
-      if (remaining <= 0) {
-        if (!card.classList.contains("card--dying")) {
-          card.classList.add("card--dying");
-          removeNote(n.id);
-          bindCardEnd(card);
-        }
-        continue;
-      }
-      var progress = Math.max(0, Math.min(1, 1 - remaining / n.durationMs));
-      card.style.setProperty("--heat", Math.pow(progress, 2.2).toFixed(3));
-      card._timeEl.textContent = fmt(remaining);
-    }
-    muralRaf = requestAnimationFrame(muralTick);
-  }
-  function bindCardEnd(card) {
-    card.addEventListener("animationend", function () {
-      if (card.parentNode) card.parentNode.removeChild(card);
-      if (!grid.children.length) { muralEmpty.hidden = false; grid.hidden = true; }
-    }, { once: true });
-  }
-  function startMuralLoop() { if (!muralRaf) muralRaf = requestAnimationFrame(muralTick); }
-  function stopMuralLoop() { if (muralRaf) { cancelAnimationFrame(muralRaf); muralRaf = null; } }
-
-  newBtn.addEventListener("click", function () { showEditor(null); });
-  emptyNew.addEventListener("click", function () { showEditor(null); });
-  muralBtn.addEventListener("click", showMural);
-  if (home) home.addEventListener("click", function (e) { e.preventDefault(); showMural(); });
-
-  /* ---- início ---- */
-
-  function recenter(instant) {
-    centerItem(selected, instant);
-    requestAnimationFrame(updateWheel);
-  }
-
-  window.addEventListener("resize", function () { autoGrow(); recenter(true); });
-
-  var initial = track.querySelector('.wheel__item[aria-checked="true"]') || items[0];
-  markWheel(initial);
-  applyWheelToState();
-  requestAnimationFrame(loop);
-
-  if (aliveNotes().length) showMural();
-  else showEditor(null);
-
-  window.addEventListener("load", function () {
-    recenter(true);
-    if (!muralEl.hidden) return;
-    if (!("ontouchstart" in window)) text.focus();
-  });
-})();
+  // splash -> onboarding ou app
+  setTimeout(() => {
+    $("#splash").hidden = true;
+    if (store.onboarded) { $("#app").hidden = false; go("inbox"); }
+    else startOnboarding();
+  }, 850);
+}
+boot();
