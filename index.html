@@ -1,105 +1,335 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b0a0c" />
-<meta name="description" content="lapso — um bloco de notas onde as palavras têm prazo de validade. Escreva o que precisa sair e deixe ir." />
-<title>lapso — palavras com prazo</title>
+<meta name="theme-color" content="#070b18" />
+<meta name="description" content="Do It Later — a gaveta digital das pendências que não são urgentes. Guarde o que não quer fazer agora e, quando bater disposição, tire uma missão. Sem cobrança, sem culpa." />
+<title>Do It Later — a gaveta do depois</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23070b18'/%3E%3Ccircle cx='50' cy='50' r='23' fill='none' stroke='%23f0402e' stroke-width='7'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%23ffc21f'/%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23070b18'/%3E%3Ccircle cx='50' cy='50' r='23' fill='none' stroke='%23f0402e' stroke-width='7'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%23ffc21f'/%3E%3C/svg%3E" />
 
-<link rel="stylesheet" href="assets/css/style.css?v=4" />
+<link rel="stylesheet" href="assets/css/tokens.css?v=1" />
+<link rel="stylesheet" href="assets/css/base.css?v=1" />
+<link rel="stylesheet" href="assets/css/components.css?v=1" />
+<link rel="stylesheet" href="assets/css/screens.css?v=1" />
 
-<!-- Grão de filme + vinheta quente: matam o aspecto "chapado digital" -->
+<div class="halftone" aria-hidden="true"></div>
 <div class="grain" aria-hidden="true"></div>
-<div class="vignette" aria-hidden="true"></div>
-<canvas class="ash" aria-hidden="true"></canvas>
 
-<header class="bar">
-  <a class="mark" href="./" aria-label="lapso — recomeçar">
-    <span class="mark__word">lapso</span>
-    <span class="mark__coal" aria-hidden="true"></span>
-  </a>
-  <div class="bar__right">
-    <p class="bar__tag">palavras com prazo de validade</p>
-    <button class="hbtn" id="muralBtn" type="button" hidden>mural</button>
-    <button class="hbtn hbtn--accent" id="newBtn" type="button" hidden>escrever</button>
-    <button class="gear" id="gear" type="button" aria-label="Configurações" aria-haspopup="dialog">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
-        <circle cx="12" cy="12" r="3.2"></circle>
-        <path d="M12 2.6v2.6M12 18.8v2.6M4.2 12H1.6M22.4 12h-2.6M5.6 5.6 7.4 7.4M16.6 16.6l1.8 1.8M18.4 5.6 16.6 7.4M7.4 16.6l-1.8 1.8"></path>
-      </svg>
-    </button>
-  </div>
-</header>
+<!-- Splash rápido -->
+<div class="splash" id="splash" aria-hidden="true">
+  <p class="splash__mark">DO IT<br /><span>LATER</span></p>
+</div>
 
-<main class="views">
-  <section class="stage" id="stage" hidden>
-    <section class="note" id="note" aria-label="sua nota">
-      <div class="fuse" aria-hidden="true">
-        <span class="fuse__track"></span>
-        <span class="fuse__burn"></span>
-        <span class="fuse__spark"></span>
-      </div>
-
-      <textarea
-        class="note__text"
-        id="text"
-        spellcheck="false"
-        autocomplete="off"
-        autocapitalize="sentences"
-        placeholder="escreva. isto vai desaparecer."
-        aria-label="texto da nota"
-      ></textarea>
+<!-- Onboarding (3 telas) -->
+<div class="onb" id="onb" hidden>
+  <div class="onb__slides" id="onbSlides">
+    <section class="onb__slide" data-slide="0">
+      <div class="onb__art" aria-hidden="true"><span class="blob blob--1"></span><span class="blob blob--2"></span><span class="blob blob--3"></span></div>
+      <p class="onb__num">01</p>
+      <h2 class="onb__title">Tire as pendências da cabeça</h2>
+      <p class="onb__body">Guarde aqui tudo aquilo que você não quer, ou não precisa, fazer agora.</p>
     </section>
-
-    <div class="gone" id="gone" hidden>
-      <p class="gone__line">não resta nada.</p>
-      <button class="gone__again" id="again" type="button">escrever outra</button>
-    </div>
-  </section>
-
-  <section class="mural" id="mural" hidden aria-label="mural de notas">
-    <div class="mural__grid" id="grid"></div>
-    <div class="mural__empty" id="muralEmpty" hidden>
-      <p class="mural__emptyLine">nada por aqui — ainda.</p>
-      <button class="mural__emptyBtn" id="emptyNew" type="button">escrever algo que não deve durar</button>
-    </div>
-  </section>
-</main>
-
-<footer class="dock" id="dock">
-  <div class="wheel" id="wheel" role="radiogroup" aria-label="tempo de vida da nota" tabindex="0">
-    <div class="wheel__track" id="wheelTrack">
-      <button class="wheel__item" type="button" data-mode="desabafo" role="radio" aria-checked="false">desabafo</button>
-      <button class="wheel__item" type="button" data-secs="15" role="radio" aria-checked="false">15<small>s</small></button>
-      <button class="wheel__item" type="button" data-secs="30" role="radio" aria-checked="false">30<small>s</small></button>
-      <button class="wheel__item" type="button" data-secs="60" role="radio" aria-checked="true">1<small>min</small></button>
-      <button class="wheel__item" type="button" data-secs="120" role="radio" aria-checked="false">2<small>min</small></button>
-      <button class="wheel__item" type="button" data-secs="300" role="radio" aria-checked="false">5<small>min</small></button>
-      <button class="wheel__item" type="button" data-secs="600" role="radio" aria-checked="false">10<small>min</small></button>
-      <button class="wheel__item" type="button" data-secs="1800" role="radio" aria-checked="false">30<small>min</small></button>
-      <button class="wheel__item" type="button" data-secs="3600" role="radio" aria-checked="false">1<small>h</small></button>
-    </div>
-    <span class="wheel__marker" aria-hidden="true"></span>
+    <section class="onb__slide" data-slide="1">
+      <div class="onb__art" aria-hidden="true"><span class="blob blob--2" style="left:12%"></span><span class="blob blob--3" style="left:44%;top:34%"></span><span class="blob blob--1" style="left:66%;width:90px;height:90px"></span></div>
+      <p class="onb__num">02</p>
+      <h2 class="onb__title">Quando bater disposição, tire uma missão</h2>
+      <p class="onb__body">O app escolhe uma pendência compatível com o seu tempo e a sua energia.</p>
+    </section>
+    <section class="onb__slide" data-slide="2">
+      <div class="onb__art" aria-hidden="true"><span class="blob blob--3" style="left:16%;width:110px;height:110px"></span><span class="blob blob--1" style="left:50%;top:36%;width:80px;height:80px"></span><span class="blob blob--2" style="left:72%"></span></div>
+      <p class="onb__num">03</p>
+      <h2 class="onb__title">Sem cobrança e sem culpa</h2>
+      <p class="onb__body">Você pode aceitar, devolver para a gaveta ou tentar outra missão. É a gaveta do depois.</p>
+    </section>
   </div>
-
-  <div class="read" id="read" aria-live="off">
-    <span class="read__time" id="time">1:00</span>
-    <span class="read__hint" id="hint">começa quando você escrever</span>
-  </div>
-</footer>
-
-<div class="sheet" id="sheet" hidden>
-  <div class="sheet__scrim" id="scrim"></div>
-  <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <div class="sheet__head">
-      <h2 class="sheet__title" id="sheetTitle">quando o tempo acaba</h2>
-      <button class="sheet__close" id="sheetClose" type="button" aria-label="Fechar">×</button>
-    </div>
-    <p class="sheet__hint">passe o cursor ou toque para ver cada uma</p>
-    <div class="preview">
-      <canvas id="previewCanvas" aria-hidden="true"></canvas>
-    </div>
-    <div class="opts" id="opts" role="radiogroup" aria-label="animação do fim"></div>
+  <div class="onb__foot">
+    <button class="onb__skip" id="onbSkip" type="button">pular</button>
+    <div class="onb__dots" id="onbDots" aria-hidden="true"></div>
+    <button class="btn btn--primary" id="onbNext" type="button">Próximo</button>
   </div>
 </div>
 
-<script src="assets/js/dissolve.js?v=4"></script>
-<script src="assets/js/app.js?v=4"></script>
+<!-- App -->
+<div class="app" id="app" hidden>
+  <div class="viewport" id="viewport">
+
+    <!-- =================== GAVETA (Inbox) =================== -->
+    <section class="screen" data-screen="inbox">
+      <header class="head">
+        <div class="head__wordmark"><span class="coal"></span> Do It Later</div>
+        <h1 class="display head__title">Sua gaveta</h1>
+        <p class="said head__sub" id="inboxSub">tem 8 coisas.</p>
+      </header>
+
+      <div class="filterbar">
+        <div class="chips chips--scroll" id="inboxFilters" role="group" aria-label="filtrar a gaveta">
+          <button class="chip is-on" data-catfilter="" type="button">tudo</button>
+        </div>
+      </div>
+
+      <div class="section-bar">
+        <span class="section-label">Ainda na gaveta</span>
+      </div>
+
+      <div class="stack" id="inboxList"></div>
+
+      <div class="empty" id="inboxEmpty" hidden>
+        <p class="empty__line">A gaveta está vazia. Que descanso.</p>
+        <button class="btn btn--primary" data-add type="button">Guardar uma pendência</button>
+      </div>
+
+      <button class="fab inbox-fab" id="addFab" type="button" aria-label="Guardar uma pendência" data-add>+</button>
+    </section>
+
+    <!-- =================== ROLETA =================== -->
+    <section class="screen" data-screen="roulette" hidden>
+      <header class="head roulette-hero">
+        <div class="head__wordmark"><span class="coal"></span> A roleta</div>
+        <h1 class="display head__title">Deixa o app<br />escolher</h1>
+      </header>
+
+      <p class="filter-summary" id="filterSummary">Qualquer coisa serve.</p>
+
+      <div class="roulette-filters">
+        <div class="filter-group">
+          <span class="filter-group__label">Tenho tempo pra</span>
+          <div class="seg" id="fTime" role="group" aria-label="tempo disponível">
+            <button class="seg__opt is-on" data-time="" type="button">qualquer</button>
+            <button class="seg__opt" data-time="t5" type="button">5 min</button>
+            <button class="seg__opt" data-time="t15" type="button">15 min</button>
+            <button class="seg__opt" data-time="t30" type="button">30 min</button>
+            <button class="seg__opt" data-time="t60" type="button">1 h+</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-group__label">Minha energia</span>
+          <div class="seg" id="fEnergy" role="group" aria-label="energia disponível">
+            <button class="seg__opt is-on" data-energy="" type="button">qualquer</button>
+            <button class="seg__opt" data-energy="low" type="button">pouca</button>
+            <button class="seg__opt" data-energy="med" type="button">média</button>
+            <button class="seg__opt" data-energy="high" type="button">muita</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-group__label">Onde</span>
+          <div class="seg" id="fPlace" role="group" aria-label="lugar">
+            <button class="seg__opt is-on" data-place="" type="button">tanto faz</button>
+            <button class="seg__opt" data-place="home" type="button">em casa</button>
+            <button class="seg__opt" data-place="out" type="button">na rua</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-group__label">Categoria</span>
+          <div class="chips chips--scroll" id="fCategory" role="group" aria-label="categoria"></div>
+        </div>
+      </div>
+
+      <button class="throw" id="throwBtn" type="button">
+        Tirar uma missão
+        <small id="throwCount">8 coisas na gaveta</small>
+      </button>
+
+      <p class="roulette-empty" id="rouletteEmpty" hidden>Nenhuma pendência combina com esses filtros. Afrouxe um pouco.</p>
+    </section>
+
+    <!-- =================== FEITAS =================== -->
+    <section class="screen" data-screen="done" hidden>
+      <header class="head">
+        <div class="head__wordmark"><span class="coal"></span> Concluídas</div>
+        <h1 class="display head__title">Já saíram<br />da cabeça</h1>
+      </header>
+
+      <div class="stat-strip">
+        <div class="stat"><div class="stat__num stat__num--yellow" id="statDone">0</div><div class="stat__label">coisas resolvidas</div></div>
+        <div class="stat"><div class="stat__num" id="statStored">0</div><div class="stat__label">ainda na gaveta</div></div>
+      </div>
+
+      <div class="section-bar"><span class="section-label">Histórico</span></div>
+      <div id="doneList"></div>
+      <div class="empty" id="doneEmpty" hidden>
+        <p class="empty__line">Ainda não concluiu nada por aqui. Sem pressa.</p>
+      </div>
+    </section>
+
+    <!-- =================== PERFIL =================== -->
+    <section class="screen" data-screen="profile" hidden>
+      <header class="head">
+        <div class="head__wordmark"><span class="coal"></span> Perfil</div>
+        <h1 class="display head__title">Do seu<br />jeito</h1>
+      </header>
+
+      <div class="pro-card">
+        <p class="pro-card__k">Do It Later Pro</p>
+        <h2 class="pro-card__t">Sem limites,<br />sem culpa</h2>
+        <p class="pro-card__d">Tarefas ilimitadas, filtros completos, temas, widgets e o Modo Sem Culpa.</p>
+        <button class="btn" id="openPro" type="button">Conhecer o Pro</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">Aparência</div>
+        <div class="row">
+          <div class="row__text"><div class="row__title">Tema</div><div class="row__sub">A identidade se adapta ao claro e ao escuro.</div></div>
+          <div class="seg" id="themeSeg" role="group" aria-label="tema">
+            <button class="seg__opt" data-theme-opt="auto" type="button">auto</button>
+            <button class="seg__opt" data-theme-opt="light" type="button">claro</button>
+            <button class="seg__opt" data-theme-opt="dark" type="button">escuro</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">Roleta</div>
+        <div class="row">
+          <div class="row__text"><div class="row__title">Suspense no sorteio</div><div class="row__sub">A roleta desacelera antes de parar.</div></div>
+          <label class="switch"><input type="checkbox" id="prefSuspense" /><span class="switch__track"></span><span class="switch__thumb"></span></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">Modo sem culpa <span class="tag-pro">pro</span></div>
+        <div class="row">
+          <div class="row__text"><div class="row__title">Esconder há quanto tempo está guardada</div><div class="row__sub">Nada de "guardada há 30 dias" pesando na consciência.</div></div>
+          <label class="switch"><input type="checkbox" id="prefHideAge" /><span class="switch__track"></span><span class="switch__thumb"></span></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">Protótipo</div>
+        <div class="row">
+          <div class="row__text"><div class="row__title">Simular plano Pro</div><div class="row__sub">Libera os recursos Pro só para testar o protótipo.</div></div>
+          <label class="switch"><input type="checkbox" id="prefPro" /><span class="switch__track"></span><span class="switch__thumb"></span></label>
+        </div>
+        <div class="row">
+          <div class="row__text"><div class="row__title">Recomeçar demonstração</div><div class="row__sub">Restaura a gaveta de exemplo e o onboarding.</div></div>
+          <button class="btn btn--ghost" id="resetDemo" type="button">Resetar</button>
+        </div>
+      </div>
+
+      <p class="about">Do It Later é uma gaveta digital para pequenas pendências não urgentes. Não é agenda. Não é cobrança. É a gaveta do depois.<br />Protótipo visual · v0.1</p>
+    </section>
+
+  </div>
+
+  <!-- Navegação inferior -->
+  <nav class="nav" id="nav" aria-label="navegação principal">
+    <button class="nav__tab is-on" data-tab="inbox" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 7l1.5 11a2 2 0 0 0 2 1.7h9a2 2 0 0 0 2-1.7L20 7M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+      <span>Gaveta<span class="nav__badge" id="navBadge" hidden>0</span></span>
+      <span class="dot"></span>
+    </button>
+    <button class="nav__tab nav__tab--throw" data-tab="roulette" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg>
+      <span>Roleta</span>
+      <span class="dot"></span>
+    </button>
+    <button class="nav__tab" data-tab="done" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12.5l5 5 11-11"/></svg>
+      <span>Feitas</span>
+      <span class="dot"></span>
+    </button>
+    <button class="nav__tab" data-tab="profile" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg>
+      <span>Perfil</span>
+      <span class="dot"></span>
+    </button>
+  </nav>
+</div>
+
+<!-- Sheet: guardar / editar tarefa -->
+<div class="overlay" id="taskSheet" hidden>
+  <div class="overlay__scrim" data-close></div>
+  <form class="sheet-panel" id="taskForm">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 class="kicker" id="taskFormTitle">Guardar uma pendência</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="fTitle">O que ficou pendente</label>
+      <input class="input input--title" id="fTitle" name="title" placeholder="ex.: arrumar o portão" autocomplete="off" required />
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="fNote">Uma observação (opcional)</label>
+      <textarea class="textarea" id="fNote" name="note" placeholder="algum detalhe que ajude o você do futuro"></textarea>
+    </div>
+
+    <div class="field">
+      <span class="field__label">Categoria</span>
+      <div class="chips" id="fFormCat" role="group" aria-label="categoria"></div>
+    </div>
+
+    <div class="field">
+      <span class="field__label">Vai levar quanto tempo</span>
+      <div class="chips" id="fFormTime" role="group" aria-label="tempo estimado"></div>
+    </div>
+
+    <div class="field">
+      <span class="field__label">Energia que exige</span>
+      <div class="chips" id="fFormEnergy" role="group" aria-label="energia"></div>
+    </div>
+
+    <div class="field">
+      <div class="row" style="border:0;padding:0.2rem 0">
+        <div class="row__text"><div class="row__title">Precisa sair de casa</div></div>
+        <label class="switch"><input type="checkbox" id="fOutside" /><span class="switch__track"></span><span class="switch__thumb"></span></label>
+      </div>
+    </div>
+
+    <div style="display:grid;gap:0.6rem;margin-top:1.2rem">
+      <button class="btn btn--primary btn--lg btn--block" type="submit" id="taskSubmit">Guardar na gaveta</button>
+      <button class="btn btn--ghost btn--block" type="button" id="taskDelete" hidden>Excluir esta pendência</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: missão sorteada / em andamento -->
+<div class="overlay" id="missionModal" hidden>
+  <div class="overlay__scrim" data-close></div>
+  <div class="modal-panel">
+    <div class="mission" id="missionBody"></div>
+  </div>
+</div>
+
+<!-- Modal: limite da versão gratuita -->
+<div class="overlay" id="limitModal" hidden>
+  <div class="overlay__scrim" data-close></div>
+  <div class="modal-panel" style="text-align:center">
+    <p class="mission__kicker">Gaveta cheia</p>
+    <h2 class="display" style="font-size:clamp(1.7rem,7vw,2.4rem)">30 coisas guardadas</h2>
+    <p class="said" style="margin:1rem auto;max-width:34ch">A versão gratuita guarda até 30 pendências ativas. Conclua ou exclua alguma — ou passe para o Pro e guarde à vontade.</p>
+    <div style="display:grid;gap:0.6rem;margin-top:1.4rem">
+      <button class="btn btn--primary btn--lg btn--block" id="limitPro" type="button">Conhecer o Pro</button>
+      <button class="btn btn--ghost btn--block" data-close type="button">Agora não</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: apresentação do Pro -->
+<div class="overlay" id="proSheet" hidden>
+  <div class="overlay__scrim" data-close></div>
+  <div class="sheet-panel">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 class="kicker">Do It Later Pro</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <h3 class="display" style="font-size:clamp(1.8rem,8vw,2.6rem)">Tudo, sem<br />cobrança</h3>
+    <div class="perks" id="proPerks"></div>
+    <div class="price-row">R$ 20 <small>compra única · ~US$ 10 fora</small></div>
+    <button class="btn btn--primary btn--lg btn--block" id="proBuy" type="button">Quero o Pro</button>
+    <p class="about" style="padding:1rem 0 0">Preço e formato ainda em estudo. Este é um protótipo — nada é cobrado.</p>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastAction" type="button" hidden></button></div>
+
+<script type="module" src="assets/js/app.js?v=1"></script>

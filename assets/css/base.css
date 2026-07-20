@@ -1,0 +1,115 @@
+/* =========================================================================
+   Do It Later — base e atmosfera
+   Reset enxuto, tela de fundo e as camadas de textura (grão de filme +
+   pontilhado de impressão) que tiram o aspecto "chapado digital".
+   ========================================================================= */
+
+* { box-sizing: border-box; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* O atributo [hidden] sempre vence — classes com display não devem sobrepô-lo */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; margin: 0; }
+html { overflow-x: clip; }
+
+body {
+  min-height: 100dvh;
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+  transition: background 500ms var(--ease), color 500ms var(--ease);
+}
+
+/* Degradê de fundo — faixas de azul, um pouco mais quente no topo */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% -12%,
+      color-mix(in oklab, var(--bg), var(--paper) 8%) 0%,
+      var(--bg) 46%,
+      var(--bg-deep) 100%);
+}
+
+/* Pontilhado de impressão (halftone) — pequena trama de pontos */
+.halftone {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--dot-op);
+  background-image: radial-gradient(var(--dot-ink) 1px, transparent 1.4px);
+  background-size: 7px 7px;
+  mix-blend-mode: multiply;
+}
+:root[data-theme="dark"] .halftone,
+:root:not([data-theme]) .halftone { mix-blend-mode: screen; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .halftone { mix-blend-mode: multiply; }
+}
+
+/* Grão de filme animado */
+.grain {
+  position: fixed;
+  inset: -60%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: var(--grain-op);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 620ms steps(2) infinite;
+}
+@keyframes grain {
+  0%   { transform: translate(0, 0); }
+  50%  { transform: translate(-1.8%, 1.4%); }
+  100% { transform: translate(1.4%, -1%); }
+}
+
+/* App shell — grid: conteúdo rolável + navegação fixa embaixo */
+.app {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+
+.viewport {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: clip;
+  padding-bottom: var(--s5);
+}
+
+/* Foco visível coerente em todo o app */
+:where(button, a, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Utilitário para leitores de tela */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+::selection { background: var(--yellow); color: var(--yellow-ink); }
+
+/* --- Movimento reduzido --------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .grain { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

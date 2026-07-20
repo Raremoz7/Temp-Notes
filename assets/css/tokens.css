@@ -1,0 +1,137 @@
+/* =========================================================================
+   Do It Later — tokens
+   O sistema de cores, tipografia e espaçamento vive AQUI. Trocar o light mode,
+   o dark mode ou futuras skins é editar este arquivo — nunca as telas.
+
+   Direção: artística, editorial, retrofuturista. Azuis como base, vermelho e
+   amarelo vivos como acento. Branco/creme só em detalhe. Sem branco puro
+   dominante no claro; contraste vem de cores complementares e variações de tom.
+   ========================================================================= */
+
+:root {
+  /* ---- Tipografia -------------------------------------------------------- */
+  --display: "Archivo Black", "Arial Black", "Helvetica Neue", Impact,
+             system-ui, sans-serif;                 /* manchete de pôster */
+  --sans:    "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+             "Helvetica Neue", Arial, sans-serif;    /* corpo legível */
+  --mono:    ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo,
+             Consolas, monospace;                    /* rótulos, metadados */
+  --serif:   "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+             "Times New Roman", serif;               /* frases, voz humana */
+
+  /* ---- Escala de espaço (base 4px) -------------------------------------- */
+  --s1: 0.25rem;  --s2: 0.5rem;  --s3: 0.75rem;  --s4: 1rem;
+  --s5: 1.5rem;   --s6: 2rem;    --s7: 3rem;      --s8: 4rem;
+
+  /* ---- Raios e formas ---------------------------------------------------- */
+  --r-sm: 10px;   --r-md: 16px;  --r-lg: 24px;    --r-pill: 999px;
+  --edge: clamp(1.15rem, 5vw, 2.4rem);   /* respiro lateral das telas */
+  --nav-h: 4.6rem;                        /* altura da navegação inferior */
+
+  /* ---- Movimento --------------------------------------------------------- */
+  --ease:     cubic-bezier(0.16, 1, 0.3, 1);   /* saída longa e suave */
+  --ease-in:  cubic-bezier(0.7, 0, 0.84, 0);
+  --spring:   cubic-bezier(0.34, 1.56, 0.64, 1); /* leve overshoot, com vida */
+}
+
+/* =========================================================================
+   LIGHT — a base é azul, não branco. O branco aparece só como fio de detalhe.
+   ========================================================================= */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:        #bcd0ec;   /* azul de céu impresso — fundo geral */
+  --bg-deep:   #a7c1e4;   /* usado em faixas e degradês de fundo */
+  --surface:   #d3e2f5;   /* cartões: azul mais claro que o fundo */
+  --surface-2: #c2d5ef;   /* cartão secundário / pressionado */
+  --surface-3: #ecf3fb;   /* superfície elevada (sheets) — quase creme frio */
+
+  --ink:       #12294e;   /* azul-tinta profundo — texto principal */
+  --ink-soft:  rgba(18, 41, 78, 0.66);
+  --ink-faint: rgba(18, 41, 78, 0.40);
+  --ink-ghost: rgba(18, 41, 78, 0.14);
+  --hair:      rgba(18, 41, 78, 0.16);   /* fios/bordas */
+
+  --red:       #f0402e;   /* vermelho vivo — ação principal */
+  --red-ink:   #fff2ee;   /* texto sobre vermelho */
+  --yellow:    #ffc21f;   /* amarelo vivo — destaque/energia */
+  --yellow-ink:#3a2a00;   /* texto sobre amarelo */
+  --blue:      #1e5bd6;   /* azul elétrico — links, seleção */
+  --blue-ink:  #eef4ff;
+  --paper:     #fbfdff;   /* branco-detalhe: fios, brilhos pontuais */
+
+  --scrim:     rgba(18, 33, 60, 0.42);
+  --shadow:    0 18px 40px -22px rgba(16, 32, 66, 0.55);
+  --shadow-lg: 0 34px 80px -30px rgba(13, 27, 58, 0.6);
+
+  /* Textura de impressão (halftone) — visível de leve no claro */
+  --dot-ink:   rgba(18, 41, 78, 0.5);
+  --dot-op:    0.05;
+  --grain-op:  0.05;
+}
+
+/* =========================================================================
+   DARK — azul-preto de base. Vermelho, amarelo e azul elétrico brilham.
+   ========================================================================= */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:        #070b18;   /* preto azulado */
+  --bg-deep:   #04060f;
+  --surface:   #0e162e;   /* cartão sobre o fundo */
+  --surface-2: #16203f;   /* cartão secundário / pressionado */
+  --surface-3: #131d3a;   /* sheets */
+
+  --ink:       #eef1e6;   /* creme — texto principal */
+  --ink-soft:  rgba(238, 241, 230, 0.64);
+  --ink-faint: rgba(238, 241, 230, 0.38);
+  --ink-ghost: rgba(238, 241, 230, 0.12);
+  --hair:      rgba(238, 241, 230, 0.14);
+
+  --red:       #ff4635;   /* vermelho vivo */
+  --red-ink:   #fff3ef;
+  --yellow:    #ffd23f;   /* amarelo */
+  --yellow-ink:#2a1e00;
+  --blue:      #3f7bff;   /* azul elétrico */
+  --blue-ink:  #f2f6ff;
+  --paper:     #f4f7ff;
+
+  --scrim:     rgba(2, 4, 10, 0.66);
+  --shadow:    0 20px 46px -24px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 40px 90px -30px rgba(0, 0, 0, 0.85);
+
+  --dot-ink:   rgba(120, 160, 240, 0.5);
+  --dot-op:    0.06;
+  --grain-op:  0.055;
+}
+
+/* Segue o sistema quando o usuário não escolheu tema manualmente */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg:        #070b18;
+    --bg-deep:   #04060f;
+    --surface:   #0e162e;
+    --surface-2: #16203f;
+    --surface-3: #131d3a;
+    --ink:       #eef1e6;
+    --ink-soft:  rgba(238, 241, 230, 0.64);
+    --ink-faint: rgba(238, 241, 230, 0.38);
+    --ink-ghost: rgba(238, 241, 230, 0.12);
+    --hair:      rgba(238, 241, 230, 0.14);
+    --red:       #ff4635;
+    --red-ink:   #fff3ef;
+    --yellow:    #ffd23f;
+    --yellow-ink:#2a1e00;
+    --blue:      #3f7bff;
+    --blue-ink:  #f2f6ff;
+    --paper:     #f4f7ff;
+    --scrim:     rgba(2, 4, 10, 0.66);
+    --shadow:    0 20px 46px -24px rgba(0, 0, 0, 0.8);
+    --shadow-lg: 0 40px 90px -30px rgba(0, 0, 0, 0.85);
+    --dot-ink:   rgba(120, 160, 240, 0.5);
+    --dot-op:    0.06;
+    --grain-op:  0.055;
+  }
+}

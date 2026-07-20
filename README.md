@@ -1,98 +1,104 @@
-# lapso
+# Do It Later
 
-**Palavras com prazo de validade.** Um bloco de notas onde o que você escreve
-se desfaz em cinza depois de um tempo — para te forçar a *fazer* o que anotou
-antes que suma, ou simplesmente para botar um desabafo pra fora e deixar ir.
+**A gaveta do depois.** Um app para guardar as pequenas pendências da vida que
+não são urgentes, mas continuam ocupando espaço na cabeça. Você joga a pendência
+na gaveta sem decidir *quando* vai fazer. Depois, quando bater tempo, energia ou
+disposição, abre a roleta e o app **sorteia uma missão** compatível.
 
-Sem contas, sem servidor, sem nuvem. Tudo acontece no seu navegador e some de
-verdade. Abra o `index.html` e comece a escrever.
+> Não é agenda. Não é cobrança. É a gaveta do depois.
 
----
+Este repositório é o **protótipo visual** (primeira etapa): dados fictícios
+locais, sem login, sem backend, sem pagamentos. O objetivo é validar navegação,
+composição visual, responsividade, animações e a experiência da roleta antes de
+levar o produto para Flutter.
 
-## A ideia
+## O ciclo
 
-Uma nota que dura para sempre vira mais uma coisa acumulada. Uma nota com hora
-para morrer tem outro peso: ou você age, ou você perde. `lapso` transforma o
-tempo no material da interface — ele não é um detalhe no canto, é o protagonista.
+**Guardar → Sortear → Aceitar → Fazer ou devolver para a gaveta.**
 
-Dois jeitos de usar:
+Sem punição: aceitar, devolver ou tentar outra missão são todos caminhos válidos.
+Uma tarefa devolvida volta a ficar disponível para sorteios futuros.
 
-- **Prazo** — você escolhe quanto tempo a nota vive (de `15s` a `1h`). A contagem
-  começa na primeira tecla. Um *pavio* queima na lateral e a brasa esquenta de
-  cinza a vermelho conforme o fim se aproxima. No zero, as palavras se desfazem.
-- **Desabafo** — não tem relógio. Enquanto você escreve, a nota vive. Se você
-  parar, ela começa a se esvair e, se você não voltar, some. Escrever de novo
-  devolve fôlego. É pra quando o importante é só deixar sair.
+## Telas
 
-## O mural de notas vivas
+Navegação inferior com quatro áreas, mais o onboarding e os overlays:
 
-Você pode ter **várias notas com prazo ao mesmo tempo**, cada uma contando o
-próprio tempo. O **mural** é a tela central que reúne todas as que ainda vivem —
-cada card mostra um trecho, o tempo restante e a brasa esquentando conforme o
-prazo se esgota. Toque para abrir e continuar; quando o prazo de uma acaba, ela
-se desfaz e **some do mural para sempre**. É "várias notas, abra depois" — mas o
-depois tem prazo: elas continuam mortais. (Notas em modo *desabafo* são
-transientes e não entram no mural.)
+- **Gaveta (Inbox)** — tudo o que está guardado. Criar, editar, excluir, filtrar
+  por categoria e ver há quanto tempo cada coisa espera.
+- **Roleta** — o diferencial. Escolha tempo, energia, lugar e categoria; toque em
+  *Tirar uma missão* e o app sorteia entre as tarefas compatíveis, com o ritual
+  do título girando até parar numa.
+- **Missão** — a tarefa sorteada em destaque: aceitar, sortear de novo, devolver
+  ou marcar como já feita. Ao aceitar, entra em *andamento*; ao concluir, sai da
+  cabeça e vai para o histórico.
+- **Feitas** — histórico das concluídas, com data e opção de restaurar, além de
+  estatísticas leves.
+- **Perfil** — tema (claro/escuro/auto), configurações da roleta, Modo Sem Culpa,
+  o plano Pro e o reset da demonstração.
 
-## Decisões de design
+Inclui o **modal de limite** da versão gratuita (30 tarefas ativas) e a
+**apresentação do Pro**.
 
-O objetivo era um objeto com autoria — nada com "cara de template de IA".
+## Direção visual
 
-- **Tipografia editorial** — o texto é servido numa serifada quente (old-style),
-  porque uma nota *é* texto e merece respeito tipográfico. O cromo da interface
-  é monoespaçado e discreto.
-- **Carvão, não preto** — o fundo é um carvão morno com uma luz sutil no topo,
-  não `#000`. A tinta é um branco-papel (`#ece5d6`), nunca branco puro.
-- **Cor com significado** — existe uma única escala de cor, do cinza morno à
-  brasa, controlada por uma variável de "calor" que reflete o tempo restante.
-  A cor não decora: ela conta quanto falta.
-- **O pavio** — o indicador de progresso é uma linha vertical que queima de cima
-  para baixo, com uma brasa que brilha no ponto de queima. Substitui a barra de
-  progresso genérica por algo que pertence ao tema.
-- **A morte** — motor de partículas próprio (canvas, sem bibliotecas): o texto
-  renderizado é amostrado pixel a pixel, cada ponto vira uma partícula. São
-  **quatro animações à escolha** (no botão de configurações, com preview ao vivo
-  de cada uma): `brasa` (fagulha e cinza ao vento), `vapor` (desfoca e evapora),
-  `poeira` (as letras se esfarelam) e `glitch` (corrompe com aberração cromática
-  e colapsa).
-- **Grão de filme e vinheta** — uma camada de ruído e uma vinheta que esquenta
-  perto do fim matam o aspecto "chapado digital".
-- **Respeito ao usuário** — `prefers-reduced-motion` desliga tremores e a
-  tempestade de partículas (troca por um fade sóbrio); nada de auto-play de som.
+Artística, editorial, retrofuturista — nada com cara de gerenciador corporativo
+genérico.
+
+- **Paleta autoral** — base em azuis (nunca branco puro dominante no claro),
+  vermelho e amarelo vivos como acento, azul elétrico e creme no escuro. O
+  contraste vem de cores complementares e variações de tom.
+- **Tipografia expressiva** — manchete de pôster (display pesado), rótulos em
+  mono retrofuturista e frases em serifada itálica, a voz mais humana.
+- **Textura de impressão** — pontilhado (halftone) e grão de filme discretos
+  tiram o aspecto "chapado digital".
+- **Componentes com personalidade** — cartões com faixa de categoria, botões
+  grandes, formas orgânicas no onboarding, estados de toque bem perceptíveis.
+- **Claro e escuro** com a mesma identidade, e respeito a `prefers-reduced-motion`
+  e `prefers-color-scheme`.
 
 ## Como rodar
 
-Abra `index.html` no navegador — um duplo-clique basta, não precisa de build nem
-de servidor. Se preferir servir localmente:
+O app usa módulos ES, então precisa ser **servido por HTTP** (não abra o arquivo
+por `file://`):
 
 ```bash
 python3 -m http.server 8000
-# depois abra http://localhost:8000
+# abra http://localhost:8000
 ```
+
+Também roda direto pelo GitHub Pages.
 
 ## Estrutura
 
+O código é separado por responsabilidade — o sistema de cores, tipografia e
+espaçamento fica centralizado para permitir mudar temas e futuras skins sem
+tocar em cada tela.
+
 ```
-index.html            # marcação e estados da tela
-assets/css/style.css  # sistema visual (tokens, calor, pavio, atmosfera)
-assets/js/dissolve.js # motor de partículas — o texto virando cinza
-assets/js/app.js      # orquestração: modos, contagem, calor, morte
+index.html                # marcação das telas e overlays
+
+assets/css/
+  tokens.css              # SISTEMA DE TEMAS: cores light/dark, tipografia, espaço, raios
+  base.css                # reset + atmosfera (grão, halftone, fundo, foco)
+  components.css          # botões, chips, cartões, navegação, sheets, campos, toggles
+  screens.css             # layout de cada tela, onboarding, missão
+
+assets/js/
+  models.js               # MODELOS: tarefa, categorias, tempos, energias, filtros, formatação
+  store.js                # ESTADO + PERSISTÊNCIA local (localStorage) e assinatura
+  seed.js                 # dados fictícios da gaveta de estreia
+  roulette.js             # lógica do sorteio + animação do giro
+  app.js                  # orquestração: router de telas, render, formulários, overlays
 ```
 
-## Ajustes rápidos
+## Próximos passos (etapa funcional / Flutter)
 
-- **Tempos disponíveis** — os botões em `index.html` (`data-secs`). Troque os
-  valores ou adicione opções.
-- **Ritmo do desabafo** — `GRACE` (fôlego antes de esvair) e `DRAIN` (tempo até
-  sumir parado) no topo de `app.js`.
-- **Curva do calor** — o expoente em `Math.pow(progress, 2.2)` em `app.js`:
-  maior = fica calmo por mais tempo e só esquenta no fim.
-- **Cores** — `--ash`, `--ember` e `--ink` no `:root` de `style.css`.
+O protótipo já foi pensado para virar produto: persistência isolada em `store.js`
+(troca por backend sem tocar nas telas), estados de tarefa modelados
+(`ativa · em andamento · concluída`), limite gratuito, temas centralizados e
+estrutura preparada para tags, filtros completos, widgets, backup/sincronização e
+notificações — tudo do plano Pro e das etapas seguintes descritas no briefing.
 
-## Privacidade
+---
 
-Nada sai do seu dispositivo — não há servidor, telemetria ou rede. As notas com
-prazo ficam guardadas **só no seu navegador** (`localStorage`) e **só enquanto
-estão vivas**: quando o prazo acaba — mesmo com o app fechado — a nota é apagada
-de vez. Notas em modo *desabafo* nunca são salvas. Também fica guardada a sua
-preferência de animação do fim. Quando some, some. É esse o ponto.
+Protótipo visual · v0.1 — sem login, sem backend, sem cobrança.
